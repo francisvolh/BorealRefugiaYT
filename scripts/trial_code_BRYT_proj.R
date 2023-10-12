@@ -11,7 +11,7 @@ library(trelliscopejs)
 
 #########
 #SDM plots: Plots_1991_Normal_Present Distributions????
-list.files("data/YT Boreal Refugia Drive/Plots_1991_Normal_Present Distributions")
+#list.files("data/YT Boreal Refugia Drive/Plots_1991_Normal_Present Distributions")
 
 bird.names<-list.files("data/YT Boreal Refugia Drive/Plots_1991_Normal_Present Distributions")
 
@@ -27,7 +27,7 @@ names(df.names1) <- "x"
 
 #########
 #Files_1991_Present_Mean90CI_rds
-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds")
+#list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds")
 
 bird.names<-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds")
 
@@ -38,9 +38,6 @@ df.names2  <- as.data.frame(x=bird.names2)
 
 #write.csv(df.names2, "C:/Users/vanoordtlahozf/OneDrive - EC-EC/Documents/Boreal Refugia/df.names2.csv")
 #53 species
-
-print(setdiff(bird.names2,bird.names1))
-
 
 #Files_1991_Future_Mean90CI_rd
 list.files("data/YT Boreal Refugia Drive/Files_1991_Future_Mean90CI_rds")
@@ -68,12 +65,12 @@ df3 %>%
   filter(codes ==  "PUFI")
 
 
-PUFIECEarth3__26_2071.1<-readRDS("data/YT Boreal Refugia Drive/Files_1991_Future_Mean90CI_rds/PUFIECEarth3__26_2071(1).rds")
+#PUFIECEarth3__26_2071.1<-readRDS("data/YT Boreal Refugia Drive/Files_1991_Future_Mean90CI_rds/PUFIECEarth3__26_2071(1).rds")
 
-PUFIECEarth3__26_2071 <-readRDS("data/YT Boreal Refugia Drive/Files_1991_Future_Mean90CI_rds/PUFIECEarth3__26_2071.rds")
+#PUFIECEarth3__26_2071 <-readRDS("data/YT Boreal Refugia Drive/Files_1991_Future_Mean90CI_rds/PUFIECEarth3__26_2071.rds")
 
-summary(PUFIECEarth3__26_2071.1)
-summary(PUFIECEarth3__26_2071)
+#summary(PUFIECEarth3__26_2071.1)
+#summary(PUFIECEarth3__26_2071)
 
 #confirmed they are copied RDS files, deleting extra (1)
 
@@ -136,7 +133,7 @@ sum.df5 <- df5 %>%
     File.Count = n()
   )
 
-View(sum.df5)
+#View(sum.df5)
 
 #found a PDF named RegionMAT (a histogram overlap graph) moved into extra folder
 
@@ -180,36 +177,36 @@ length(bird.names)/3
 bird.names7 <- substring(bird.names, 1,4)
 
 bird.names7 <- unique(bird.names7)
-length(bird.names7_cl)
+#length(bird.names7_cl)
 #52 spp but a bunch of repeated files
 
-idx<-grep("(1)", bird.names)
+#idx<-grep("(1)", bird.names)
 
-to_delete <- bird.names[idx]
+#to_delete <- bird.names[idx]
 
-file_name <- "data_file.txt"
-
-
-for (i in 1:length(to_delete)) {
-  if (file.exists(paste0("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability LWR90/",to_delete[i]))) {
-    #unlink(file_name)
-    print("File exists")
-  } else{
-    print("File not exists..")
-  } 
-}
-
-for (i in 1:length(to_delete)) {
-  if (file.exists(paste0("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability LWR90/",to_delete[i]))) {
-    unlink((paste0("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability LWR90/",to_delete[i])))
-    print(paste0("File  ", i, "was deleted"))
-  } else{
-    print("File not exists..")
-  } 
-}
+#file_name <- "data_file.txt"
 
 
-df.bird.names7 <- data.frame(x=bird.names7_cl)
+#for (i in 1:length(to_delete)) {
+ # if (file.exists(paste0("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability LWR90/",to_delete[i]))) {
+  #  #unlink(file_name)
+  #  print("File exists")
+  #} else{
+   # print("File not exists..")
+#  } 
+#}
+
+#for (i in 1:length(to_delete)) {
+ # if (file.exists(paste0("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability LWR90/",to_delete[i]))) {
+  #  unlink((paste0("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability LWR90/",to_delete[i])))
+   # print(paste0("File  ", i, "was deleted"))
+#  } else{
+ #   print("File not exists..")
+  #} 
+#}
+
+
+df.bird.names7 <- data.frame(x=bird.names7)
 
 ###
 ###BRT_output/GBMs_NoBarrier1991 ----- 152 files in folder
@@ -280,17 +277,14 @@ names(df.all.birds.spp)
 names(alpha.names)
 
 df.all.birds.spp <- df.all.birds.spp %>% 
-  filter(!is.na(all.birds)) %>% 
-  filter(!all.birds == "NULL")
+  filter(!is.na(all.birds)) %>% ## note here all.birds is the variable name as well, and not the df
+  filter(!all.birds == "NULL")## note here all.birds is the variable name as well, and not the df
 
 df.all.birds.names <-merge(df.all.birds.spp, alpha.names, by.x="all.birds", by.y= "X4.LETTER.CODE", all.x=TRUE)
 
 
 
-#### merge to check dicrepancies in files
-
-
-
+#### merge to check discrepancies in files
 #92 spp in the all birds big data cleaned file
 
 #merging
@@ -344,8 +338,38 @@ df.names9$BRT_1961 <- "BRT_1961"
 
 df.all.birds.merged <-merge(df.all.birds.merged, df.names9, by.x = "all.birds", by.y ="bird.names9", all.x = TRUE)
 
+#adding fit statistics column
+fitStats1991 <- read.csv(file.choose())
+sppFit1991 <- fitStats1991$Spp
+#length(sppFit1991)
+#sort(sppFit1991)
+#length(unique(sppFit1991))
+#fitStats1991[which(fitStats1991$Spp == "OVEN"),]
 
-write.csv(df.all.birds.merged, "data/df.all.birds.merged.csv")
+sppFit1991 <- sort(unique(sppFit1991))
+sppFit1991 <- as.data.frame(sppFit1991)
+sppFit1991$sppFit1991val <- "sppFit1991"
+
+#names(sppFit1991)
+
+df.all.birds.merged <-merge(df.all.birds.merged, sppFit1991, by.x = "all.birds", by.y ="sppFit1991", all.x = TRUE)
+
+
+#write.csv(df.all.birds.merged, "data/df.all.birds.merged.csv")
+
+#####
+#look at a the fit BRT stats of one bird
+#AMPI has no model, to check fit
+#is not posthoc removed
+
+#ALFL
+load(file.choose() )
+
+summary(GBM)
+
+summary(GBM[1])
+
+GBM
 
 ################################################
 names(all.birds)
@@ -367,17 +391,19 @@ nrow(all.birds[which(all.birds$spp == "NULL"),]) ## 69276 observations are NULL,
 #they all have COUnt ZERO? maybe this is it?
 
 all.birds %>% 
-  group_by(spp) %>% 
+  group_by(spp, count) %>% 
+  filter(count ==0) %>% 
   summarise(
     min = min(count, rm.na = TRUE),
     max = max(count, rm.na = TRUE),
-    aver = mean(count, rm.na = TRUE)
+    aver = mean(count, rm.na = TRUE),
+    tot = n()
   ) %>% 
   View()
 
 
 
-bird.names2
+bird.names2 #Files_1991_Present_Mean90CI_rds
 
 all.the.birds <- unique(all.birds$spp)
 
@@ -391,7 +417,8 @@ modelled <- tibble(all.the.birds) %>%
 ## change name TOO IN GGSAVE!!!!!!!
 four_plots <- list()
 
-for (i in sort(modelled)) {
+#to save the plots!
+for (i in sort(all.the.birds)) {
   onespp <- all.birds %>% 
     filter(spp == i)
   
@@ -410,27 +437,55 @@ for (i in seq_along(plot_chunks)) {
   
   p<-cowplot::plot_grid(plotlist = plot_chunks[[i]], nrow = 4, ncol =5)
   
-  #print(p)
+  print(p)
   
-  ggsave(paste0("plots/model_bird_plots_",i,".png"), p, units = 'in', width = 17, height = 9)
+  #ggsave(paste0("plots/model_bird_plots_",i,".png"), p, units = 'in', width = 17, height = 9)
 }
 
-### VIS NOT WORKING WITH TRELLISCOPEJS
-all.birds %>% 
-  filter(!spp=="NULL") %>% 
-  filter(spp %in% not.modelled) %>% 
-ggplot(aes(count))+
-  geom_density()+
-  theme_bw()+
-  #ggtitle(unique(spp))+
-  xlab(NULL)+
-  facet_trelliscope(
-    ~spp,
-    ncol = 4,
-    nrow = 4
-  )
-###
+### to viz the plots more interactively
 
+
+sample %>% 
+  #select(spp, count) %>% ### need to select the specific columns if not give an error for breaks... not sure, send an issue?
+  filter(!is.na(spp)) %>% 
+  filter(!spp == "NULL") %>%
+  #filter(spp %in% unique(all.birds$spp)) %>% 
+  ggplot() +
+  geom_histogram(aes(count))+
+  theme_bw()+
+  #xlim(1948, 2011) + ylim(10, 95) +
+  facet_trelliscope(~ spp, nrow = 2, ncol = 4)###
+
+unique(sample$spp)
+
+
+sample<- sample %>%
+  select(!X) %>% 
+  mutate(
+    spp = case_when( spp == "LALO" ~ "A",
+                     spp == "SOSP" ~ "B",
+                     spp == "CORA" ~ "C",
+                     spp == "SAVS" ~ "C"),
+    spp = case_when( spp == "LALO" ~ "A",
+                     spp == "SOSP" ~ "B",
+                     spp == "CORA" ~ "C",
+                     spp == "SAVS" ~ "C")
+  )
+head(sample)
+length(unique(sample$LocationID))
+
+g <- sample(1:28, 28, replace=F)
+
+sample %>% 
+  #select(spp, count) %>% ### need to select the specific columns if not give an error for breaks... not sure, send an issue?
+  filter(!is.na(spp)) %>% 
+  filter(!spp == "NULL") %>%
+  #filter(spp %in% unique(all.birds$spp)) %>% 
+  ggplot() +
+  geom_histogram(aes(count))+
+  theme_bw()+
+  #xlim(1948, 2011) + ylim(10, 95) +
+  facet_wrap(~ spp, nrow = 2, ncol = 4, scales = "free")###
 
 ###################################################################
 bird.data.names <- sort(unique(all.birds$spp), decreasing = FALSE)
