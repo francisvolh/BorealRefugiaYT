@@ -13,17 +13,30 @@ require(rgeos)
 # Load data ---------------------------------------------------------------
 crs<-'+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' # CRS of climate rasters
 
-dir<-'/Users//annadrake/Desktop/Yukon Project Data/qpad-offsets-main'
-dirupper<-'/Users//annadrake/Desktop/Yukon Project Data'
+#dir<-'/Users//annadrake/Desktop/Yukon Project Data/qpad-offsets-main'
+######dirupper<-'/Users//annadrake/Desktop/Yukon Project Data'
 
-setwd('/Users/annadrake/Desktop/Yukon Project Data/Mapping Resources/')
-CEC<-st_read('NA_CEC_Eco_Level2/NA_CEC_Eco_Level2.shp')
+#setwd('/Users/annadrake/Desktop/Yukon Project Data/Mapping Resources/')
+
+CEC<-st_read('data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/NA_CEC_Eco_Level2/NA_CEC_Eco_Level2.shp')
+plot(CEC)
 
 CEC <- st_transform(CEC, crs) 
+shape <- st_transform(CEC, crs = "EPSG:3573")
+
+
+ggplot()+
+  geom_spatraster(data = sample_rast, #aes(fill = "bigfile[, varname]")
+  )+
+  scale_fill_hypso_c()+
+  geom_sf(data = CEC, aes(), alpha = 0)+
+  geom_sf(data = borealtaigacordillera, aes(), alpha = 0)+
+  theme_bw()
+
 
 
 require(colorspace)
-bgy <- sequential_hcl(10, "ag_GrnYl",rev=TRUE)
+bgy <- sequential_hcl(10, "ag_GrnYl", rev=TRUE)
 
 # Extract key of complete co-variate data locations ---------------------------------------------------------------
 setwd(dir)
@@ -46,10 +59,10 @@ AK_Key<-paste(AK_remove$x,AK_remove$y,sep=".")
 crs<-'+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' # CRS of climate rasters
 setwd(dirupper)
 
-BCR40_USACAN <- st_read("CordilleraBreakdown/BCR4.0_USACAN.shp") %>% st_transform(., crs)
-BCR41_USACAN <- st_read("CordilleraBreakdown/BCR4.1_USACAN.shp") %>% st_transform(., crs)
-BorealCordCAN <- st_read("CordilleraBreakdown/BorealCordilleraCAN.shp") %>% st_transform(., crs)
-TaigaCordCAN <- st_read("CordilleraBreakdown/TaigaCordilleraCAN.shp") %>% st_transform(., crs)
+BCR40_USACAN <- st_read("CordilleraBreakdown/BCR4.0_USACAN.shp") %>% st_transform(., crs = "EPSG:3573")
+BCR41_USACAN <- st_read("CordilleraBreakdown/BCR4.1_USACAN.shp") %>% st_transform(., crs = "EPSG:3573")
+BorealCordCAN <- st_read("CordilleraBreakdown/BorealCordilleraCAN.shp") %>% st_transform(., crs = "EPSG:3573")
+TaigaCordCAN <- st_read("CordilleraBreakdown/TaigaCordilleraCAN.shp") %>% st_transform(., crs = "EPSG:3573")
 #Ocean <- st_read("Mapping Resources/GSHHG/NorthAmericanCoast.shp")%>% st_transform(., crs)
 #Coast<-st_crop(Ocean, xmin=-3191000, ymin=1120000, xmax=-798000, ymax=3785000)
 
