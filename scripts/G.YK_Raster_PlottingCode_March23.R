@@ -2,11 +2,14 @@
 #### G. Plotting output #######
 ###############################
 
-require(raster)
+# Note: FVO started cleaning up and modifying script to restrict it to the use of sf, terra, and other 
+# up to date packages, after october 2023, final phase of the R spatial-evolution
+
+#require(raster)
 require(terra)
 require(sf)
 require(viridis)
-require(rgeos)
+#require(rgeos)
 
 `%notin%` <- Negate(`%in%`)
 
@@ -21,8 +24,8 @@ crs<-'+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_d
 CEC<-st_read('data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/NA_CEC_Eco_Level2/NA_CEC_Eco_Level2.shp')
 plot(CEC)
 
-CEC <- st_transform(CEC, crs) 
-shape <- st_transform(CEC, crs = "EPSG:3573")
+#CEC <- st_transform(CEC, crs) 
+shape <- st_transform(CEC, crs = "EPSG:3573") # #### ###  have to change to terra::crs() from a raster file for a climate var 
 
 
 ggplot()+
