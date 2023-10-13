@@ -10,7 +10,7 @@
 
 
 # add function
-`%notin%` <- Negate(`%in%`)
+##`%notin%` <- Negate(`%in%`) ### not used in this script
    
 ## load packages
 library(pacman)                  ####### not loading spatial packages with future issues ############
@@ -49,7 +49,7 @@ Clim_xy_frame <- unique(KEY[,c(1,6,7)]) # 63681 PC Locations
 Clim_xy <- Clim_xy_frame[,c(2:3)]
 
 # Spatial object
-Clim_xy<-vect(Clim_xy, crs = "EPSG:4326") ## check if this use of projection works the same as what Anna used
+Clim_xy<-terra::vect(Clim_xy, crs = "EPSG:4326") ## check if this use of projection works the same as what Anna used
 #crds(Clim_xy)# <- ~ lon + lat
 #proj4string(Clim_xy) <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 
@@ -57,36 +57,36 @@ Clim_xy<-vect(Clim_xy, crs = "EPSG:4326") ## check if this use of projection wor
 # Match (reproject) points to the climate raster projection
 #crs <-'+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' # CRS of climate rasters
 clim.folder <- "data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/"
-rast.crs<-crs(rast(paste0(clim.folder,"Normal_1991_2020_bFFP.tif"))) ## from data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif
+rast.crs<- terra::crs(terra::rast(paste0(clim.folder,"Normal_1991_2020_bFFP.tif"))) ## from data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif
 
 #Clim_xy <- spTransform(Clim_xy, crs) 
-Clim_xy <- project(Clim_xy, rast.crs) 
+Clim_xy <- terra::project(Clim_xy, rast.crs) 
 
-Clim_buffer <-st_buffer(st_as_sf(Clim_xy),150) # Create a buffer around the points 150 m 
+Clim_buffer <-sf::st_buffer(sf::st_as_sf(Clim_xy),150) # Create a buffer around the points 150 m 
 
 ##########################################
 # Import & reproject topographic values
 ##########################################
 topo.folder <- "data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Topography/"
-TPI_Raster<-rast(paste0(topo.folder,"tpi_1KMmd_GMTEDmd.tif"))#250/90 m windows
-Eastness<-rast(paste0(topo.folder,"eastness_1KMmd_GMTEDmd.tif"))
-Northness<-rast(paste0(topo.folder,"northness_1KMmd_GMTEDmd.tif"))
-TRI<-rast(paste0(topo.folder,"tri_1KMmd_GMTEDmd.tif")) #250/90 m windows
+TPI_Raster<-terra::rast(paste0(topo.folder,"tpi_1KMmd_GMTEDmd.tif"))#250/90 m windows
+Eastness<-terra::rast(paste0(topo.folder,"eastness_1KMmd_GMTEDmd.tif"))
+Northness<-terra::rast(paste0(topo.folder,"northness_1KMmd_GMTEDmd.tif"))
+TRI<-terra::rast(paste0(topo.folder,"tri_1KMmd_GMTEDmd.tif")) #250/90 m windows
 
 #TopoStack<-stack(TPI_Raster,Eastness,Northness,TRI)
 TopoStack<-c(TPI_Raster,Eastness,Northness,TRI)
-TopoStack<-crop(TopoStack, ext(-180,-80,10,85)) #reduce raster extent
+TopoStack<-terra::crop(TopoStack, terra::ext(-180,-80,10,85)) #reduce raster extent
 
 ### Standardize against Climate raster
-# TemplateClimrast61 <- rast(file.choose()) #Anna used a normal from 1961, but they hace the same origin, extent, and resolution
-TemplateClimrast<-rast(paste0(clim.folder,"Normal_1991_2020_bFFP.tif")) #choose a raster of climate
+# TemplateClimrast61 <- rast(file.choose())     #Anna used a normal from 1961, but they hace the same origin, extent, and resolution
+TemplateClimrast<-terra::rast(paste0(clim.folder,"Normal_1991_2020_bFFP.tif")) #choose a raster of climate
 
-template<-project(TopoStack, TemplateClimrast, align = TRUE, threads = TRUE) ##beware: Anna used align as TRUE, not just a projection transform
+template<-terra::project(TopoStack, TemplateClimrast, align = TRUE, threads = TRUE)    ##beware: Anna used align as TRUE, not just a projection transform
 #did a first run to compare just re-project with a crs vs using two rasters
-Topo_align<-project(TopoStack, template) # this seems to produce the extact same results as before, but recovers the names of the layers
+Topo_align<-terra::project(TopoStack, template) # this seems to produce the extact same results as before, but recovers the names of the layers
 #looking at both stacks, there is only a tiny move of the 10 value tick for tpi... does it matter? will keep Anna's steps then to be safe
 
-Topo_align2<-crop(Topo_align, ext(-3462442,-411705,536035.6,3786192)) # crop accommodates region and PC extents
+Topo_align2<-terra::crop(Topo_align, terra::ext(-3462442,-411705,536035.6,3786192)) # crop accommodates region and PC extents
 
 ###### Import Derived Barrier data (see "BarrierRastersOct26.R") 
 #E_Bar<-raster("PresentDayNormals/Topography/E_Barrier_Elev.tif")
@@ -96,15 +96,21 @@ Topo_align2<-crop(Topo_align, ext(-3462442,-411705,536035.6,3786192)) # crop acc
 #Topo_alignT<-stack(Topo_align2,E_Bar,N_Bar)
 
 #dir("./PresentDayNormals/Topography")
-#writeRaster(Topo_align2,paste0(topo.folder,"Aligned_raster.grd"), overwrite=TRUE) # wrote file as grd like Anna had, but her code didnt supply a filetype ???
+
+
+#writeRaster(Topo_align2,"data/Aligned_raster.grd", overwrite=TRUE) # wrote file as grd like Anna had, but her code didnt supply a filetype ???
 # the terra function writes 3 objects, a grd, a gri, and grd.aux.xml
-Topo_align2<- rast(file.choose())
+
+#read previously saved topo raster 
+######    Topo_align2<- terra::rast(file.choose())
+
 # Point count bounding box to speed things up
 #e2 <- as(extent(Clim_buffer), 'SpatialPolygons') ### clim_buffer is now a polygon with terra, trying if it works without this
 #crs(e2) <- crs
+
 e2<-Clim_buffer
 # Crop topography to bounding box
-TopoCropped<-crop(Topo_align2,e2) #worked with the terra clim_buffer object, cross check after if the code does not break!
+TopoCropped<-terra::crop(Topo_align2,e2) #worked with the terra clim_buffer object, cross check after if the code does not break!
 
 ###################################################
 ### Extract 1961 and 1991 Climate Normal Period
@@ -126,20 +132,27 @@ Normrast<- list.files(path = clim.folder, pattern='.tif$', all.files=TRUE, full.
 #Norm<-list()
 #for (j in 1:length(Normrast)) {
   
- # Norm[[j]]<-rast(paste0(clim.folder,Normrast[[j]]))
+ # Norm[[j]]<-terra::rastpaste0(clim.folder,Normrast[[j]]))
 #}### no need to loop, rast() can read a list
 
-NormStack<-rast(Normrast)
+NormStack<-terra::rast(Normrast)
 Normrastnames<- list.files(path = clim.folder, pattern='.tif$', all.files=TRUE, full.names=FALSE)
 
-NormStack<- crop(NormStack, e2)
+NormStack<- terra::crop(NormStack, e2)
 
 names(NormStack) <- Normrastnames
 
-# Add topography
-NormStack<-c(NormStack,TopoCropped) # 18 layers, ################################## I HAVE 16 layers only!!!!! not 18
-#plot(NormStack)
+#terra::writeRaster(NormStack, "data/Norms_Clim_Aligned_raster.grd", overwrite=TRUE) # wrote file as grd like Anna had
 
+# Add topography
+NormStack<-c(NormStack,TopoCropped) # 18 layers,               ################################## I HAVE 16 layers only!!!!! not 18
+#plot(NormStack)
+#terra::writeRaster(NormStack, "data/Norms_ALL_Aligned_raster.grd", overwrite=TRUE) # wrote file as grd like Anna had
+
+
+############################## next time load all clim and topo vars from raster produced before
+
+NormStack<- terra::rast("data/Norms_ALL_Aligned_raster.grd")
 
 # Clean variable names
 
@@ -154,32 +167,37 @@ List<-gsub(".tif","",List)
 output<-Clim_xy_frame
 
 # Extract
-for (k in 1:length(List)){ #Extraction loop
-  Dat<-exactextractr::exact_extract(NormStack[[k]], Clim_buffer,'weighted_mean', weights='area')
-  Dat<-data.frame(Dat)
-  Dat$Dat<-round(Dat$Dat,2)
-  names(Dat)[names(Dat)=="Dat"] <- List[k]
-  output<-cbind(output,Dat)
-} #close extraction loop
+system.time({
+  for (k in 1:length(List)){ #Extraction loop
+    Dat<-exactextractr::exact_extract(NormStack[[k]], Clim_buffer,'weighted_mean', weights='area')
+    Dat<-data.frame(Dat)
+    Dat$Dat<-round(Dat$Dat,2)
+    names(Dat)[names(Dat)=="Dat"] <- List[k]
+    output<-cbind(output,Dat)
+  } #close extraction loop
+  
+  #set FFP to NFFD where it exceeds NFFD (dealing with the FFP issue at some high elevation locations)
+  output$FFP<-ifelse(output$NFFD-output$FFP<0,output$NFFD,output$FFP)
+  output$bFFP<-ifelse(output$NFFD-output$FFP<0,NA,output$bFFP) # set dates to NA where obviously wrong
+  output$eFFP<-ifelse(output$NFFD-output$FFP<0,NA,output$eFFP)
+  output$Thaw<-output$NFFD-output$FFP
+  output<-subset(output,!is.na(output$FFP)) 
+})
 
-#set FFP to NFFD where it exceeds NFFD (dealing with the FFP issue at some high elevation locations)
-output$FFP<-ifelse(output$NFFD-output$FFP<0,output$NFFD,output$FFP)
-output$bFFP<-ifelse(output$NFFD-output$FFP<0,NA,output$bFFP) # set dates to NA where obviously wrong
-output$eFFP<-ifelse(output$NFFD-output$FFP<0,NA,output$eFFP)
-output$Thaw<-output$NFFD-output$FFP
-output<-subset(output,!is.na(output$FFP)) #61288 locations - 151 missing climate data
+#61288 locations - 151 missing climate data
 
 # write out and rename by period
 #write.csv(output, paste(FolderPath,Periods[i],"_data.csv",sep="")) #write out
 
-###  LOAD ANNAS file      output<-read.csv(file.choose())         ############################### may only need to read the Norm1991_data.csv file in the Drive##############
+###LOAD ANNAS file  output<-read.csv(file.choose())   ############################### may only need to read the Norm1991_data.csv file in the Drive##############
+## in data/YK Refugia Code and material/PresentDayNormal
 
 assign(paste(Periods,"PCs",sep="_"), output) # name
 
 
 #} # Close climate normal loop
 
-summary(output) # 2 NAs only of 64865 sites ################ if I run it all myself I HAVE MORE NAs in the climate vars, only 1 in the topo vars
+summary(output) # 2 NAs only of 64865 sites     ################ if I run it all myself I HAVE MORE NAs in the climate vars, only 1 in the topo vars
 
 # Barrier data is 9% NAs because bird movement 
 # was constrained to NE/W-NW/N when northbound, W, NW when westbound 
@@ -194,14 +212,15 @@ summary(output) # 2 NAs only of 64865 sites ################ if I run it all mys
 ### full Ecozone regions for predictions          ####
 ######################################################
 
-#### Import Ecozone boundaries ####
-dir<-'/Users//annadrake/Desktop/Yukon Project Data/qpad-offsets-main'
-FolderPath<-'/Users//annadrake/Desktop/Yukon Project Data/qpad-offsets-main/PresentDayNormals/'
-setwd(dir)
+#### Import Ecozone boundaries                                          ######## may not need these!
+#dir<-'/Users//annadrake/Desktop/Yukon Project Data/qpad-offsets-main'
+#FolderPath<-'/Users//annadrake/Desktop/Yukon Project Data/qpad-offsets-main/PresentDayNormals/'
+#setwd(dir)
 
-crs<-'+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' # CRS of climate rasters
+#crs<-'+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' # CRS of climate rasters
 
-###############################################
+
+#############################################################################################
 ##checking which shape files I have in the Drive
 
 #1
@@ -217,7 +236,7 @@ plot(BCR4.0_USACAN)
 BorealCordilleraCAN <- st_read(file.choose())
 plot(BorealCordilleraCAN)
 #5
-InclusionShapefile <- st_read(file.choose())
+InclusionShapefile <- sf::st_read(file.choose())
 plot(InclusionShapefile)
 #6
 TaigaCordilleraCAN <- st_read(file.choose())
@@ -248,7 +267,7 @@ shapes_files <- list(borealtaigacordillera,
                   TaigaCordilleraCAN
 )
 
-sample_rast <- rast(file.choose())
+sample_rast <- terra::rast(file.choose())
 
 
 names(sample_rast)
@@ -274,7 +293,7 @@ for (i in 1:length(shapes_names)) {
 cowplot::plot_grid(plotlist = plot_list, nrow = 2)
 
 ggplot()+
-  geom_spatraster(data =sample_rast, #aes(fill = "bigfile[, varname]")
+  geom_spatraster(data =sample_rast #aes(fill = "bigfile[, varname]")
   )+
   geom_sf(data = BCR4.1_USACAN, aes())+
   #geom_sf(data = InclusionShapefile, aes())+
@@ -285,29 +304,25 @@ ggplot()+
 
 plot(sample_rast)
 
-
-par(mfrow=c(1,1))
-
-x<-c(1,2,3,4)
-y<-c(4,5,6,7)
-
-plot(x,y)
-
-###############################################
-USA.Canada <- st_union(USA, canada)
+#USA.Canada <- st_union(USA, canada)
 
 
-USA <- st_read(file.choose())
-USA_reprpj <- st_transform(USA, crs = "EPSG:3573")
-plot(st_geometry(USA_reprpj), axes = TRUE)
+USA <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_USA_shp/gadm36_USA_0.shp")
+USA_reprpj <- sf::st_transform(USA, crs = rast.crs)
+#plot(st_geometry(USA_reprpj), axes = TRUE)
 
-USA.crop <- st_crop(USA_reprpj, c(xmin = -3169846, ymin = -1116692, xmax = -746769, ymax = -3790154)) #from script G line 93 raw script Anna
 
-canada <- st_read(file.choose())
-canada_reprpj <- st_transform(canada, crs = "EPSG:3573")
-canada.crop <- st_crop(canada_reprpj, c(xmin = -3169846, ymin = -1116692, xmax = -746769, ymax = -3790154)) #from script G line 93 raw script Anna
+#cropping is different than Anna because she used LAEA with a different origin
 
-usa_can_crop <- st_union(canada.crop, USA.crop) #already reprojected to "EPSG:3573" the crs of the climate vars tif rasters 
+USA.crop <- sf::st_crop(USA_reprpj, c(xmin = -3169846, ymin = 1116692, xmax = -746769, ymax = 3790154)) #from script G line 93 raw script Anna
+
+canada <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_CAN_shp/gadm36_CAN_0.shp")
+canada_reprpj <- sf::st_transform(canada, crs= rast.crs)
+
+#c(-3169846, -746769),ylim = c(1116692, 3790154)
+canada.crop <- sf::st_crop(canada_reprpj, c(xmin = -3169846, ymin = 1116692, xmax = -746769, ymax = 3790154)) #from script G line 93 raw script Anna
+
+usa_can_crop <- sf::st_union(canada.crop, USA.crop) #reprojection to the same ti (no anymore  to "EPSG:3573")
 
 ggplot()+
   #geom_sf(data = BCR4.0_USACAN, aes())+
@@ -316,7 +331,8 @@ ggplot()+
   geom_sf(data = canada_reprpj, aes())
 
 ggplot()+
-  geom_sf(data = USA.Canada, aes())
+  geom_sf(data = usa_can_crop, aes(), fill = "green", alpha = 0.3)+
+  geom_sf(data = InclusionShapefile, aes())
 
 ggplot()+
   geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0.3)+
@@ -326,22 +342,37 @@ ggplot()+
   
 
 
+############################################################################################################################################
 
 #Ecozones <- st_read("RegionShapefile/BorealTaigaCordillera.w.AK.shp")
 
 #Ecozones <- st_transform(Ecozones, crs) 
 
-Ecozones <- usa_can_crop
-
+Ecozones <- sf::st_union(BCR4.1_USACAN, BCR4.0_USACAN)
+Ecozones<-sf::st_transform(Ecozones, crs = rast.crs)
+#Ecozones <- InclusionShapefile #no sure this is it.... need to confirm with Diana and Lisa
+# or is it BCR 40 and 41
+ggplot()+
+  geom_sf(data = Ecozones, aes(), fill = "green", alpha = 0.3)
+####
+#### check this buffer!!!!! it takes to long or it explodes########################################################################################################################
 
 ####
-#### check this buffer!!!!! it takes to long or it explodes
-####
-EcozonesBuf <- sf::st_buffer(Ecozones, 400000) #for our tree dispersal est (fat-tailed dist) P of movement 400km within a century==0.0009. So limit of possibly founding populations
+system.time({
+  EcozonesBuf <- sf::st_buffer(Ecozones, 400000) #for our tree dispersal est (fat-tailed dist) P of movement 400km within a century==0.0009. So limit of possibly founding populations
+  
+})
+
+ggplot()+
+  geom_sf(data = Ecozones, aes(), fill = "green", alpha = 0.3)+
+  geom_sf(data = EcozonesBuf, aes(), fill = "red", alpha = 0.3)+
+  geom_sf(data = usa_can_crop , aes(), fill = "yellow", alpha = 0.3)
+
+
 
 # Topographic Data
-TopoBuf<-crop(Topo_align2,EcozonesBuf)
-extent(TopoBuf)
+TopoBuf<-terra::crop(Topo_align2,EcozonesBuf)
+ext(TopoBuf)
 names(TopoBuf)<-gsub("_1KMmd_GMTEDmd","",names(TopoBuf))
 
 # Add standardized survey type and year raster layer
@@ -355,12 +386,13 @@ names(Cat)<-"Cat"
 FunCorr <- function(x, y) ifelse(y-x<0,y,x) # where NFFD<FFP, use NFFD
 FunDat <-function(x, y) ifelse(y<0,NA,x)
 
-Periods<-c('Norm1961','Norm1991')
+#Periods<-c(#'Norm1961',
+ # 'Norm1991')
 
 # Run through each period of interest
 for (i in 1:length(Periods)) {
-  setwd(paste(FolderPath,Periods[i],sep=""))
-  Normrast<- list.files(pattern='.tif$', all.files=TRUE, full.names=FALSE)
+  #setwd(paste(FolderPath,Periods[i],sep=""))
+  Normrast<- list.files(path = clim.folder, pattern='.tif$', all.files=TRUE, full.names=FALSE)
 
 # Rasters at 1km resolution == 150m values, as is.
   Norm<-list()
