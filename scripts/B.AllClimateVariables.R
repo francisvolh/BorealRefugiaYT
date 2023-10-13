@@ -8,12 +8,14 @@
 ## predicted vs observed bird distributions could be better aligned using a migratory barrier 
 ## estimate for east>west and south>north west populations - but not applied in current models
 
+# Note 2: FVO started cleaning up and modifying script to restrict it to the use of sf, terra, and other 
+# up to date packages, after october 2023, final phase of the R spatial-evolution
 
 # add function
 ##`%notin%` <- Negate(`%in%`) ### not used in this script
    
 ## load packages
-library(pacman)                  ####### not loading spatial packages with future issues ############
+library(pacman)                  ####### not loading spatial packages with future issues aft oct 2023############
 pacman::p_load(stringr,
                intrval,         ### not seems to be using any of these packages functions!!!!! 'cause she creates the notin function
                doBy,
@@ -22,7 +24,6 @@ pacman::p_load(stringr,
                sf,
                terra,
                magrittr,
-               
                ggplot2, 
                tidyterra)
 
