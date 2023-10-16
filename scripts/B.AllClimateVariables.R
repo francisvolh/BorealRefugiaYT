@@ -103,7 +103,7 @@ Topo_align2<-terra::crop(Topo_align, terra::ext(-3462442,-411705,536035.6,378619
 # the terra function writes 3 objects, a grd, a gri, and grd.aux.xml
 
 #read previously saved topo raster 
-######    Topo_align2<- terra::rast(file.choose())
+######    Topo_align2<- terra::rast("data/Aligned_raster.grd) # Aligned_raster.grd
 
 # Point count bounding box to speed things up
 #e2 <- as(extent(Clim_buffer), 'SpatialPolygons') ### clim_buffer is now a polygon with terra, trying if it works without this
@@ -144,7 +144,7 @@ NormStack<- terra::crop(NormStack, e2)
 names(NormStack) <- Normrastnames
 
 #terra::writeRaster(NormStack, "data/Norms_Clim_Aligned_raster.grd", overwrite=TRUE) # wrote file as grd like Anna had
-
+NormStack <- rast("data/Norms_Clim_Aligned_raster.grd")
 # Add topography
 NormStack<-c(NormStack,TopoCropped) # 18 layers,               ################################## I HAVE 16 layers only!!!!! not 18
 #plot(NormStack)
@@ -231,7 +231,8 @@ plot(borealtaigacordillera)
 alaskamask <- st_read(file.choose())
 plot(alaskamask) ########################looks horrible, some proj issue???
 #3
-BCR4.0_USACAN  <- st_read(file.choose())
+BCR4.0_USACAN  <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.0_USACAN.shp")
+
 plot(BCR4.0_USACAN)
 #4
 BorealCordilleraCAN <- st_read(file.choose())
@@ -247,7 +248,7 @@ NA_CEC_Eco_Level2 <- st_read(file.choose()) #### HUGE SHAPEFILE
 plot(NA_CEC_Eco_Level2)
 
 #8
-BCR4.1_USACAN<-st_read(file.choose())
+BCR4.1_USACAN<-sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.1_USACAN.shp")
 plot(BCR4.1_USACAN)
 
 
@@ -384,55 +385,145 @@ values(Cat)<- 1 # PC
 names(Cat)<-"Cat"
 
 # Function to deal with FFP errors
-FunCorr <- function(x, y) ifelse(y-x<0,y,x) # where NFFD<FFP, use NFFD
-FunDat <-function(x, y) ifelse(y<0,NA,x)
+#   re-written to apply directly into the rasters and not using overlay() from raster package
+
+#FunCorr <- function(x, y) ifelse(y-x<0,y,x) # where NFFD<FFP, use NFFD
+
+FunCorrTerra <- function(x, y) {
+  result <- x
+  result[y-x<0] <- y
+  return(result)
+}
+
+#FunDat <-function(x, y) ifelse(y<0,NA,x)
+
+FunDatTerra <- function(x, y) {
+  result <- x
+  result[y < 0] <- NA
+  return(result)
+}
 
 #Periods<-c(#'Norm1961',
  # 'Norm1991')
 
 # Run through each period of interest
-for (i in 1:length(Periods)) {
+#for (i in 1:length(Periods)) {
   #setwd(paste(FolderPath,Periods[i],sep=""))
   Normrast<- list.files(path = clim.folder, pattern='.tif$', all.files=TRUE, full.names=FALSE)
-
+  
 # Rasters at 1km resolution == 150m values, as is.
   Norm<-list()
   for (j in 1:length(Normrast)) {
-    Norm[[j]]<-raster(Normrast[j])
-    Norm[[j]]<-crop(Norm[[j]], EcozonesBuf)
-  
+    Norm[[j]]<-terra::rast(paste0(clim.folder,Normrast[j]))
+    names(Norm[[j]]) <- terra::varnames(Norm[[j]])
+    Norm[[j]]<-terra::crop(Norm[[j]], EcozonesBuf)
+
 # Clean layer names to match models
     names(Norm[[j]])<-gsub("Normal_1991_2020_","",names(Norm[[j]]))
-    names(Norm[[j]])<-gsub("Normal_1981_2010_","",names(Norm[[j]]))
-    names(Norm[[j]])<-gsub("Normal_1971_2000_","",names(Norm[[j]]))
-    names(Norm[[j]])<-gsub("Normal_1961_1990_","",names(Norm[[j]]))
+    #names(Norm[[j]])<-gsub("Normal_1981_2010_","",names(Norm[[j]]))
+    #names(Norm[[j]])<-gsub("Normal_1971_2000_","",names(Norm[[j]]))
+    #names(Norm[[j]])<-gsub("Normal_1961_1990_","",names(Norm[[j]]))
   }
-   NormStack<-stack(Norm[1:length(Normrast)]) 
+  
+  #stak the rasters (again)
+   NormStack<-c(Norm[1:length(Normrast)]) # which are this not aligned?
    
    # deal with errors in FFP dates/data
    error<-NormStack[[9]]-NormStack[[5]] # where FFP exceeds NFFD (nonsensical)
-   NormStack[[1]] <-overlay(NormStack[[1]], error, fun = FunDat)
-   names(NormStack[[1]])<-"bFFP"
-   NormStack[[3]] <- overlay(NormStack[[3]], error, fun = FunDat)
-   names(NormStack[[3]])<-"eFFP"
+   
+   #NormStack[[1]] <-overlay(NormStack[[1]], error, fun = FunDat) #terra cant do this, but we can just apply the re-written function directly
+   NormStack[[1]] <- FunDatTerra(NormStack[[1]], error)
+   #names(NormStack[[1]])<-"bFFP" #names was already carried from previoys lines
+   
+   NormStack[[3]] <- FunDatTerra(NormStack[[3]], error)
+   #NormStack[[3]] <- overlay(NormStack[[3]], error, fun = FunDat)
+   #names(NormStack[[3]])<-"eFFP"
+   
    #correct FFP 
-   NormStack[[5]] <- overlay(NormStack[[5]], NormStack[[9]], fun = FunCorr)
-   names(NormStack[[5]])<-"FFP"
+   NormStack[[5]] <- FunCorrTerra(NormStack[[5]], error)
+   #NormStack[[5]] <- overlay(NormStack[[5]], NormStack[[9]], fun = FunCorr)
+   #names(NormStack[[5]])<-"FFP"
   
    # add thaw metric
    Thaw<-NormStack[[9]]-NormStack[[5]]
    names(Thaw)<-"Thaw"
    
    #Stack 
-   NormStack<-addLayer(NormStack,Thaw,year,Cat,TopoBuf)
-   writeRaster(NormStack, filename=paste(dir,"/Ecozone_Climate/",Periods[i],names(NormStack),sep=""), bylayer=TRUE,format="GTiff",overwrite=TRUE) 
+   NormStack<-c(NormStack,Thaw,year,Cat,TopoBuf)
+   for (k in 1:length(NormStack)) {
+     r <- NormStack[[k]]
+     writeRaster(r, filename=paste0("data/corrected_rasters_clim_topo/",Periods,names(r),".grd")) #individual rasters
+     
+   }
+   #writeRaster(NormStack, filename=paste0("data/corrected_rasters_clim_topo",Periods,names(r),".grd"), bylayer=TRUE,format="GTiff", overwrite=TRUE) 
    
-   #Pare down and write out as dataframe
-   Climate<-as.data.frame(NormStack, xy=TRUE)
-   Climate<-subset(Climate, !is.na(Climate$EMT)) # get rid of ocean data
-   saveRDS(Climate, paste(dir,"/BRT_output/PresentRasters/",Periods[i],"_","EcozoneNormals.rds",sep=""))
-}
+   ##rename files in hard drive due to a location name error
+   # Replace text in file names
+  # to_change<-list.files("data/corrected_rasters_clim_topo/", full.names = TRUE)
+   #for (i in 1:length(to_change)) {
+    #  if (file.exists(to_change[i])) {
+     #  file.rename(to_change[i],gsub("corrected_rasters_clim_topo/corrected_rasters_clim_topo","/corrected_rasters_clim_topo/",to_change[i] ) )
+    #  print(paste0("File  ", gsub("data/corrected_rasters_clim_topo/corrected_rasters_clim_topo","",to_change[i] ), "was rename"))
+     #  } else{
+      #  print("File not exists..")
+     #} 
+     #}
+   
+   NormStack <- rast(NormStack)
+   
+   saveRDS(NormStack, "data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS") #rasters also as an RDS
+   
+   plot_list<-list()
+   
+   for (i in 1:length(names(NormStack))) {
+     
+     p <- ggplot()+
+       geom_spatraster(data = NormStack[[i]], #aes(fill = "bigfile[, varname]")
+       )+
+       geom_sf(data = Ecozones, aes(),alpha = 0)+
+       scale_fill_hypso_c()+
+       ggtitle(names(NormStack[[i]]))+
+       theme_bw()+
+       theme(legend.position = "none")
+     ## get rido of axis labels for this cowplot
+     
+     plot_list[[i]] <- p
+     
+   }
+cowplot::plot_grid(plotlist = plot_list, nrow = 5, ncol = 5)
 
+
+   #Pare down and write out as dataframe
+   Climate <- NULL
+   
+   system.time({
+     
+     for (i in 1:1) {
+       
+       climat1<-as.data.frame(NormStack[[i]], xy=TRUE)
+       
+       for (j in 2:length(NormStack)) {
+         
+         climat2<-as.data.frame(NormStack[[j]], xy=TRUE)
+         
+         climat1<- merge(climat1, climat2, by.x=c("x", "y"), by.y=c("x", "y"))
+       } 
+       Climate <- climat1
+     }
+     
+   })
+   
+   
+   ###
+   #continue here 
+   ###
+   
+   Climate<-subset(Climate, !is.na(Climate$EMT)) # get rid of ocean data
+   saveRDS(Climate, paste0("data/corrected_rasters_clim_topo/",Periods[i],"_","EcozoneNormals.rds"))
+#}
+
+   
+   
 #Note - very high precip values in some locations...
 #Wendler et al. 2017 (Atmosphere) map rainfall >7500 in AK mountains
 #greatest rainfall recorded in AK is 5727, globally recorded: 11,871
