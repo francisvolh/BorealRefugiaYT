@@ -154,7 +154,7 @@ NormStack<-c(NormStack,TopoCropped) # 18 layers,               #################
 ############################## next time load all clim and topo vars from raster produced before
 
 NormStack<- terra::rast("data/Norms_ALL_Aligned_raster.grd")
-
+plot(NormStack)
 # Clean variable names
 
 List<-names(NormStack)
@@ -190,8 +190,11 @@ system.time({
 # write out and rename by period
 #write.csv(output, paste(FolderPath,Periods[i],"_data.csv",sep="")) #write out
 
+
+#write.csv(output, "data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991_data_FVOversion.csv") #write out
 ###LOAD ANNAS file  output<-read.csv(file.choose())   ############################### may only need to read the Norm1991_data.csv file in the Drive##############
 ## in data/YK Refugia Code and material/PresentDayNormal
+
 
 assign(paste(Periods,"PCs",sep="_"), output) # name
 
@@ -230,21 +233,24 @@ plot(borealtaigacordillera)
 #2
 alaskamask <- st_read(file.choose())
 plot(alaskamask) ########################looks horrible, some proj issue???
+
 #3
 BCR4.0_USACAN  <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.0_USACAN.shp")
-
 plot(BCR4.0_USACAN)
+
 #4
 BorealCordilleraCAN <- st_read(file.choose())
 plot(BorealCordilleraCAN)
+
 #5
 InclusionShapefile <- sf::st_read(file.choose())
 plot(InclusionShapefile)
+
 #6
 TaigaCordilleraCAN <- st_read(file.choose())
 plot(TaigaCordilleraCAN)
 #7
-NA_CEC_Eco_Level2 <- st_read(file.choose()) #### HUGE SHAPEFILE
+NA_CEC_Eco_Level2 <- sf::st_read(file.choose()) #### HUGE SHAPEFILE
 plot(NA_CEC_Eco_Level2)
 
 #8
@@ -425,7 +431,7 @@ FunDatTerra <- function(x, y) {
     #names(Norm[[j]])<-gsub("Normal_1961_1990_","",names(Norm[[j]]))
   }
   
-  #stak the rasters (again)
+  #stak the rasters
    NormStack<-c(Norm[1:length(Normrast)]) # which are this not aligned?
    
    # deal with errors in FFP dates/data
@@ -449,13 +455,19 @@ FunDatTerra <- function(x, y) {
    names(Thaw)<-"Thaw"
    
    #Stack 
-   NormStack<-c(NormStack,Thaw,year,Cat,TopoBuf)
-   for (k in 1:length(NormStack)) {
-     r <- NormStack[[k]]
-     writeRaster(r, filename=paste0("data/corrected_rasters_clim_topo/",Periods,names(r),".grd")) #individual rasters
+   NormStack<-c(NormStack,Thaw,year,Cat,TopoBuf) ## should have made rast(NormStack) to make it an actual SpatRasterStack!!!!
+   
+   NormStack2<-rast(NormStack)
+   
+   writeRaster(NormStack2, filename=paste0("data/corrected_rasters_clim_topo/","all_corrected_",Periods,".grd"))
+   plot(NormStack2)
+   #this would write each raster 1 by 1
+   #for (k in 1:length(NormStack)) {
+    # r <- NormStack[[k]]
+     #writeRaster(r, filename=paste0("data/corrected_rasters_clim_topo/",Periods,names(r),".grd")) #individual rasters
      
-   }
-   #writeRaster(NormStack, filename=paste0("data/corrected_rasters_clim_topo",Periods,names(r),".grd"), bylayer=TRUE,format="GTiff", overwrite=TRUE) 
+   #}
+   #writeRaster(NormStack, filename=paste0("data/corrected_rasters_clim_topo",Periods,names(r),".grd"), bylayer=TRUE, format="GTiff", overwrite=TRUE) 
    
    ##rename files in hard drive due to a location name error
    # Replace text in file names
@@ -468,11 +480,12 @@ FunDatTerra <- function(x, y) {
       #  print("File not exists..")
      #} 
      #}
+   NormStack <- NormStack2 ## just labelled as 2 because I wanted to keep another file of the same name I loaded before
+   #NormStack <- rast(NormStack) # this is only needed if it comes from a list, but it is already a Spat Stack
    
-   NormStack <- rast(NormStack)
    
-   saveRDS(NormStack, "data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS") #rasters also as an RDS
    
+   #just to visualize them
    plot_list<-list()
    
    for (i in 1:length(names(NormStack))) {
@@ -490,36 +503,16 @@ FunDatTerra <- function(x, y) {
      plot_list[[i]] <- p
      
    }
-cowplot::plot_grid(plotlist = plot_list, nrow = 5, ncol = 5)
+
+   cowplot::plot_grid(plotlist = plot_list, nrow = 4, ncol = 5)
 
 
    #Pare down and write out as dataframe
-   Climate <- NULL
-   
-   system.time({
-     
-     for (i in 1:1) {
-       
-       climat1<-as.data.frame(NormStack[[i]], xy=TRUE)
-       
-       for (j in 2:length(NormStack)) {
-         
-         climat2<-as.data.frame(NormStack[[j]], xy=TRUE)
-         
-         climat1<- merge(climat1, climat2, by.x=c("x", "y"), by.y=c("x", "y"))
-       } 
-       Climate <- climat1
-     }
-     
-   })
-   
-   
-   ###
-   #continue here 
-   ###
-   
+   Climate<-as.data.frame(NormStack, xy=TRUE)
    Climate<-subset(Climate, !is.na(Climate$EMT)) # get rid of ocean data
-   saveRDS(Climate, paste0("data/corrected_rasters_clim_topo/",Periods[i],"_","EcozoneNormals.rds"))
+   saveRDS(Climate, paste("data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS")) #FVO trial version equivalent to below line
+   #saveRDS(Climate, paste(dir,"/BRT_output/PresentRasters/",Periods[i],"_","EcozoneNormals.rds",sep=""))
+
 #}
 
    
