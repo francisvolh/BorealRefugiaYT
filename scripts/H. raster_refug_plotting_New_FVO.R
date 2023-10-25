@@ -1,4 +1,5 @@
 library(ggplot2)
+library(dplyr)
 library(terra)
 library(sf)
 library(tidyterra)
@@ -53,49 +54,58 @@ ggplot()+
     plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
   )
               
-################### Load groups ################### 
+################### Produce group classification to sum and plot ################### 
 #load classification file and make make vectors with codes
-class_spp <- read.csv("data/SpeciesStatus.csv")
+#class_spp <- read.csv("data/SpeciesStatus.csv")
 
-unique(class_spp$Migration1)
+#unique(class_spp$Migration1)
 
-df.spp.names.merged <- read.csv("data/df.all.birds.merged.csv")
+df.spp.names.merged <- read.csv("data/df.all.birds.merged.csv", #stringsAsFactors = TRUE, 
+                                na.strings=c("NA","NaN", ""))
 names(df.spp.names.merged)
+summary(df.spp.names.merged)
+#already merged Diana list of categories to the df.merged, need to assign some missing values
+#spp.to.work <- df.spp.names.merged %>% 
+ # filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
+  #select(all.birds) %>% 
+  #pull()
 
-spp.to.work <- df.spp.names.merged %>% 
+
+LDM <- df.spp.names.merged %>%
   filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
+  #filter(species_code %in% spp.to.work) %>% 
+  filter(Migration1 == "Neotropical migrant") %>% 
+  select(all.birds) %>% 
+  pull()
+
+SDM <- df.spp.names.merged %>%
+  filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
+  #filter(species_code %in% spp.to.work) %>% 
+  filter(Migration1 == "Short distance migrant") %>% 
+  select(all.birds) %>% 
+  pull()
+
+RES <- df.spp.names.merged %>%
+  filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
+  #filter(species_code %in% spp.to.work) %>% 
+  filter(Migration1 == "Resident") %>% 
   select(all.birds) %>% 
   pull()
 
 
-LDM <- class_spp %>%
-  filter(species_code %in% spp.to.work) %>% 
-  filter(Migration1 == "Neotropical migrant") %>% 
-  select(species_code) %>% 
-  pull()
 
-SDM <- class_spp %>%
-  filter(species_code %in% spp.to.work) %>% 
-  filter(Migration1 == "Short distance migrant") %>% 
-  select(species_code)%>% 
-  pull()
-
-RES <- class_spp %>%
-  filter(species_code %in% spp.to.work) %>% 
-  filter(Migration1 == "Resident") %>% 
-  select(species_code)%>% 
-  pull()
-
-NOM <- class_spp %>%
-  filter(species_code %in% spp.to.work) %>% 
+NOM <- df.spp.names.merged %>%
+  filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
+  #filter(species_code %in% spp.to.work) %>% 
   filter(Migration1 == "Nomadic") %>% 
-  select(species_code) %>% 
+  select(all.birds) %>% 
   pull()
 
-N_assig <- class_spp %>%
-  filter(species_code %in% spp.to.work) %>% 
+N_assig <- df.spp.names.merged %>%
+  filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
+  #filter(species_code %in% spp.to.work) %>% 
   filter(is.na(Migration1)) %>% 
-  select(species_code)%>% 
+  select(all.birds) %>% 
   pull()
 
 groupings_labs <- c("LDM","SDM","RES"#,"NOM"#,"N_assig"
@@ -116,112 +126,183 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refu
 ref.ras.dir <- "data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability MEAN/"
 
 
-#Pick vector of Spp group to run in the loop!
 
-group_plots<- list()
-#loop for to run all groups
-for (k in groupings_labs) {
+# produce a raster to clean Ref, suit, and refxsuit rasters
+Norm1991<-readRDS("data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS")
+NAKey<-subset(Norm1991,!is.na(Norm1991$bFFP))
+NAKey<-subset(NAKey,!is.na(NAKey$tri))
+NA_rast<-terra::rast(NAKey , type="xyz")
+NA_rast[!is.na(NA_rast)] <-1
+bird_rast <- terra::rast("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability MEAN/ALFL_Refugia_RCPmean.tiff")
+NA_rast <-terra::crop(NA_rast,bird_rast)
+NA_rast <-NA_rast[[1]]
+
+NA_rast.crs <- NA_rast
+terra::crs(NA_rast.crs) <- rast.crs
   
-  #for one group
+rm("Norm1991")
+
+### produce a key to clean present distribution rasters, will work on RDS files, before rasterizing it to plot, 
+###### but not needed for me
+NAKey<-paste(NAKey$x,NAKey$y,sep=".") #raster squares with complete covariates only
+# Import key of masked AK regions (AK portion of BCR 3 + BCR 2) -------------------------------------
+AK_remove<-read.csv("data/YT Boreal Refugia Drive/YK Refugia Code and material/AK_removalregion.csv")
+AK_Key<-paste(AK_remove$x,AK_remove$y,sep=".")
+
+sample.rast.clim <-terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif")# CLIMATE sample raster for CRS definition later
+
+rast.crs<- terra::crs(terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif")) 
+
+# NOT NEEDED ANYMORE: Pick vector of Spp group to run in the loop!
+
+
+#Curent loop runs over all predefined groups
+{
+  begin.time <- Sys.time()
   
-  group_spp <- get(k)
+  group_plots<- list()
   
-  ref.mean.list <- list()
-  suit.mean.list <- list()
-  refxsuit.mean.list <-  list()
-  
-  
-  for (i in c(group_spp)) {
+  #loop for to run all groups
+  for (k in groupings_labs) {
     
-    #rasters are sometimes tif or tiff, so the grep() solves it
-    ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
-    name1<-terra::varnames(ref.ras1)
-    ref.ras1 <- terra::mask(ref.ras1, NA_rast)
-    terra::varnames(ref.ras1)<-name1
-    suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
-    refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
+    #for one group
     
-    names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
-    #names(ref.ras1) <- terra::varnames(ref.ras1)
-    names(suit.ras1) <- terra::varnames(suit.ras1)
+    group_spp <- get(k)
     
-    ref.mean.list[[i]] <- ref.ras1
-    suit.mean.list[[i]] <- suit.ras1
-    refxsuit.mean.list[[i]] <- refxsuit.ras1
+    ref.mean.list <- list()
+    suit.mean.list <- list()
+    refxsuit.mean.list <-  list()
     
+    ref.ras1<-NULL
+    suit.ras1<-NULL
+    refxsuit.ras1<-NULL
+    
+    for (i in c(group_spp)) {
+      
+      #rasters are sometimes tif or tiff, so the grep() solves it
+      ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
+      name1<-terra::varnames(ref.ras1)
+      ref.ras1 <- terra::mask(ref.ras1, NA_rast) #mask using NAs from env variables 
+      terra::varnames(ref.ras1)<-name1
+      suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
+      refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
+      names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
+      names(suit.ras1) <- terra::varnames(suit.ras1)
+      
+      ref.mean.list[[i]] <- ref.ras1
+      suit.mean.list[[i]] <- suit.ras1
+      refxsuit.mean.list[[i]] <- refxsuit.ras1
+      
+    }
+    
+    
+    # for all RES, LDM, SDM did sum
+    #for SDM also did average to compare that visually look the same, Diana agrees they are the same
+    
+    ref.sum <- terra::app(terra::rast(ref.mean.list), "sum")#/length(ref.mean.list)
+    assign(paste0(k,"ref.sum"), ref.sum) #rename object according to loop cycle (spp grouping)
+    
+################attemtp to estimate area size of 75% refugia index
+####need to delete if not working
+        ref.sum.75 <- ref.sum
+    #ref.sum.75[ref.sum.75 <=-1] <- NA
+    ref.sum.75[ref.sum.75 < (max(terra::values(ref.sum), na.rm = TRUE)-max(terra::values(ref.sum), na.rm = TRUE)/4)] <- NA
+    
+    ref.sum.75 <- terra::mask(ref.sum.75, NA_rast) #mask using NAs from env variables 
+    
+    
+    ref.sum.75.crs <- ref.sum.75
+    terra::crs(ref.sum.75.crs) <- rast.crs 
+    
+    cell_size<-terra::cellSize(ref.sum.75.crs, 
+                               unit = "km", 
+                               transform=FALSE)
+    
+    cell_size<-cell_size[!is.na(cell_size)]
+    hig.ref.area <-length(cell_size)*median(cell_size)
+    
+    print(paste("Area of high refugia values:",round(hig.ref.area, digits=1),"km2"))
+    
+#########################    
+    
+    
+BCR4.1_4.0 <- sf::st_union(BCR4.1_USACAN, BCR4.0_USACAN)
+units(area.bcr) <- units::as_units("km2")
+area.bcr<-sf::st_area(BCR4.1_4.0)
+
+area.bcr
+    ###############
+    
+    suit.sum <- terra::app(terra::rast(suit.mean.list), "sum")#/length(suit.mean.list)
+    assign(paste0(k,"suit.sum"), suit.sum)
+    
+    refxsuit.sum <- terra::app(terra::rast(refxsuit.mean.list), "sum")#/length(refxsuit.mean.list)
+    assign(paste0(k,"refxsuit.sum"), refxsuit.sum)
+    
+    
+    #make sets of plots of only the 3 categories (ref, suit, ref x suit) per species grouping (res, ldm, sdm)
+    three.cats  <- c(ref.sum, suit.sum, refxsuit.sum)
+    three.cats.names  <- c(paste0(k,".ref.sum"),paste0(k,".suit.sum"),paste0(k,".refxsuit.sum"))
+    
+    #no need of this if running all in a loop
+    #thre.cats  <- c(LDM.ref.sum,LDM.suit.sum,LDM.refxsuit.sum)
+    #thre.cats.names  <- c("LDM.ref.sum","LDM.suit.sum","LDM.refxsuit.sum")
+    
+    #thre.cats  <- c(SDM.ref.sum,SDM.suit.sum,SDM.refxsuit.sum)
+    #thre.cats.names  <- c("SDM.ref.sum","SDM.suit.sum","SDM.refxsuit.sum")
+    
+    #thre.cats  <- c(SDM.ref.ave,SDM.suit.ave,SDM.refxsuit.ave)
+    #thre.cats.names  <- c("SDM.ref.ave","SDM.suit.ave","SDM.refxsuit.ave")
+    
+    #thre.cats  <- c(LDM.ref.ave,LDM.suit.ave,LDM.refxsuit.ave)
+    #thre.cats.names  <- c("LDM.ref.ave","LDM.suit.ave","LDM.refxsuit.ave")
+    
+    
+    three.cat.list<- list()
+    for (j in 1:length(names(three.cats))) {
+      
+      rast1 <- three.cats[[j]]
+      
+      plot.one <- ggplot()+
+        tidyterra::geom_spatraster(data =rast1)+
+        #geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.5 ,color = "black", fill = "blue", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1.5 ,color = "black", fill = "red", alpha = 0)+
+        ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
+                          ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
+                          expand = FALSE)+
+        #scale_fill_terrain_c()+ ###WORKS! may be best because of white color on zeros,   na.value = NA not doing anything in this 
+        #scale_fill_distiller()+
+        #scale_fill_binned(type = "viridis")
+        #scale_fill_continuous(type = "viridis")+
+        #scale_fill_gradient(low="red", high="green")+
+        ggplot2::theme_bw()+
+        ggplot2::ggtitle(three.cats.names[[j]])+
+        ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1)+ ### DIANA's paper style?
+        ggplot2::theme(
+          plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
+        )
+      
+      three.cat.list[[j]] <- plot.one
+      
+    }
+    
+    three.plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 3 )
+    #print(three.plots)
+    #ggsave(three.plots, filename = "SDM.sum.TERR.png", path = "plots/", units = "in", width = 10, height = 3, dpi = 300, bg = "white")
+    
+    group_plots[[k]]<- three.plots
   }
   
-
-  # for all RES, LDM, SDM did sum
-  #for SDM also did averega to compare that visually look the same, Diana agrees they are the same
+  group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
   
-  ref.sum <- app(rast(ref.mean.list), "sum")#/length(ref.mean.list)
-  assign(paste0(k,"ref.sum"), ref.sum) #rename object according to loop cycle (spp grouping)
-  
-  suit.sum <- app(rast(suit.mean.list), "sum")#/length(suit.mean.list)
-  assign(paste0(k,"suit.sum"), suit.sum)
-  
-  refxsuit.sum <- app(rast(refxsuit.mean.list), "sum")#/length(refxsuit.mean.list)
-  assign(paste0(k,"refxsuit.sum"), refxsuit.sum)
+  ggsave(group_plots.png, filename = "group_plots.v3.png", path = "plots/", units = "in", width = 10, height = 9, dpi = 300, bg = "white")
   
   
-  #make sets of plots of only the 3 categories (ref, suit, ref x suit) per species grouping (res, ldm, sdm)
-  three.cats  <- c(ref.sum, suit.sum, refxsuit.sum)
-  three.cats.names  <- c(paste0(k,".ref.sum"),paste0(k,".suit.sum"),paste0(k,".refxsuit.sum"))
+  end.time <- Sys.time()
   
-  #no need of this if running all in a loop
-  #thre.cats  <- c(LDM.ref.sum,LDM.suit.sum,LDM.refxsuit.sum)
-  #thre.cats.names  <- c("LDM.ref.sum","LDM.suit.sum","LDM.refxsuit.sum")
-  
-  #thre.cats  <- c(SDM.ref.sum,SDM.suit.sum,SDM.refxsuit.sum)
-  #thre.cats.names  <- c("SDM.ref.sum","SDM.suit.sum","SDM.refxsuit.sum")
-  
-  #thre.cats  <- c(SDM.ref.ave,SDM.suit.ave,SDM.refxsuit.ave)
-  #thre.cats.names  <- c("SDM.ref.ave","SDM.suit.ave","SDM.refxsuit.ave")
-  
-  #thre.cats  <- c(LDM.ref.ave,LDM.suit.ave,LDM.refxsuit.ave)
-  #thre.cats.names  <- c("LDM.ref.ave","LDM.suit.ave","LDM.refxsuit.ave")
-  
-  
-  three.cat.list<- list()
-  for (j in 1:length(names(three.cats))) {
-    
-    rast1 <- three.cats[[j]]
-    
-    plot.one <- ggplot()+
-      geom_spatraster(data =rast1)+
-      #geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
-      geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.5 ,color = "black", fill = "blue", alpha = 0)+
-      geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1.5 ,color = "black", fill = "red", alpha = 0)+
-      coord_sf(xlim=c(ext(ref.sum)[1], ext(ref.sum)[2]),
-               ylim = c(ext(ref.sum)[3], ext(ref.sum)[4]),
-               expand = FALSE)+
-      #scale_fill_terrain_c()+ ###WORKS! may be best because of white color on zeros,   na.value = NA not doing anything in this 
-      #scale_fill_distiller()+
-      #scale_fill_binned(type = "viridis")
-      #scale_fill_continuous(type = "viridis")+
-      #scale_fill_gradient(low="red", high="green")+
-      theme_bw()+
-      ggtitle(three.cats.names[[j]])+
-      scale_fill_viridis_c(option = "turbo", direction = -1)+ ### DIANA's paper style?
-      theme(
-        plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
-      )
-    
-    three.cat.list[[j]] <- plot.one
-    
-  }
-  
-  three.plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 3 )
-  #print(three.plots)
-  #ggsave(three.plots, filename = "SDM.sum.TERR.png", path = "plots/", units = "in", width = 10, height = 3, dpi = 300, bg = "white")
-  
-  group_plots[[k]]<- three.plots
+  print(paste("total duration of run", (end.time-begin.time)))
 }
-
-group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
-
-#ggsave(group_plots.png, filename = "group_plots.v3.png", path = "plots/", units = "in", width = 10, height = 9, dpi = 300, bg = "white")
 
 
 ##############################################################
