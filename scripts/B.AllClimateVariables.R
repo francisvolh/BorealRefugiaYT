@@ -228,7 +228,7 @@ summary(output) # 2 NAs only of 64865 sites     ################ if I run it all
 ##checking which shape files I have in the Drive
 
 #1
-borealtaigacordillera <-  st_read(file.choose())
+borealtaigacordillera <-  sf::st_read(file.choose())
 plot(borealtaigacordillera)
 #2
 alaskamask <- st_read(file.choose())
@@ -322,15 +322,20 @@ USA_reprpj <- sf::st_transform(USA, crs = rast.crs)
 
 #cropping is different than Anna because she used LAEA with a different origin
 
-USA.crop <- sf::st_crop(USA_reprpj, c(xmin = -3169846, ymin = 1116692, xmax = -746769, ymax = 3790154)) #from script G line 93 raw script Anna
+#USA.crop <- sf::st_crop(USA_reprpj, c(xmin = -3169846, ymin = 1116692, xmax = -746769, ymax = 3790154)) #from script G line 93 raw script Anna
+USA.crop <- sf::st_crop(USA_reprpj, terra::ext(Clim_xy))
 
 canada <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_CAN_shp/gadm36_CAN_0.shp")
 canada_reprpj <- sf::st_transform(canada, crs= rast.crs)
 
 #c(-3169846, -746769),ylim = c(1116692, 3790154)
-canada.crop <- sf::st_crop(canada_reprpj, c(xmin = -3169846, ymin = 1116692, xmax = -746769, ymax = 3790154)) #from script G line 93 raw script Anna
+#canada.crop <- sf::st_crop(canada_reprpj, c(xmin = -3169846, ymin = 1116692, xmax = -746769, ymax = 3790154)) #from script G line 93 raw script Anna
+canada.crop <- sf::st_crop(canada_reprpj, terra::ext(Clim_xy))
 
 usa_can_crop <- sf::st_union(canada.crop, USA.crop) #reprojection to the same ti (no anymore  to "EPSG:3573")
+
+
+
 
 ggplot()+
   #geom_sf(data = BCR4.0_USACAN, aes())+
@@ -515,8 +520,9 @@ FunDatTerra <- function(x, y) {
 
 #}
 
-   
-   
+#Climate <- readRDS("data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS") 
+#Normstack2 <- terra::rast("data/corrected_rasters_clim_topo/all_corrected_Norm1991.grd")
+      
 #Note - very high precip values in some locations...
 #Wendler et al. 2017 (Atmosphere) map rainfall >7500 in AK mountains
 #greatest rainfall recorded in AK is 5727, globally recorded: 11,871
