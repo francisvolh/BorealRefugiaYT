@@ -155,6 +155,14 @@ rast.crs<- terra::crs(terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code 
 
 # NOT NEEDED ANYMORE: Pick vector of Spp group to run in the loop!
 
+### adding calculation of BCR 4.1 and 4.0 area
+BCR4.1_4.0 <- sf::st_union(BCR4.1_USACAN, BCR4.0_USACAN)
+area.bcr<-sf::st_area(BCR4.1_4.0)
+units(area.bcr) <- units::as_units("km2")
+area.bcr
+###
+#########################    
+
 
 #Curent loop runs over all predefined groups
 {
@@ -202,47 +210,68 @@ rast.crs<- terra::crs(terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code 
     ref.sum <- terra::app(terra::rast(ref.mean.list), "sum")#/length(ref.mean.list)
     assign(paste0(k,"ref.sum"), ref.sum) #rename object according to loop cycle (spp grouping)
     
-################attemtp to estimate area size of 75% refugia index
-####need to delete if not working
-        ref.sum.75 <- ref.sum
-    #ref.sum.75[ref.sum.75 <=-1] <- NA
-    ref.sum.75[ref.sum.75 < (max(terra::values(ref.sum), na.rm = TRUE)-max(terra::values(ref.sum), na.rm = TRUE)/4)] <- NA
-    
-    ref.sum.75 <- terra::mask(ref.sum.75, NA_rast) #mask using NAs from env variables 
-    
-    
-    ref.sum.75.crs <- ref.sum.75
-    terra::crs(ref.sum.75.crs) <- rast.crs 
-    
-    cell_size<-terra::cellSize(ref.sum.75.crs, 
-                               unit = "km", 
-                               transform=FALSE)
-    
-    cell_size<-cell_size[!is.na(cell_size)]
-    hig.ref.area <-length(cell_size)*median(cell_size)
-    
-    print(paste("Area of high refugia values:",round(hig.ref.area, digits=1),"km2"))
-    
-#########################    
-    
-    
-BCR4.1_4.0 <- sf::st_union(BCR4.1_USACAN, BCR4.0_USACAN)
-units(area.bcr) <- units::as_units("km2")
-area.bcr<-sf::st_area(BCR4.1_4.0)
+################attempt to estimate area size of 75% refugia index
+#### incorporate into graphs??? rather than print()
+    ref.sum.75 <- ref.sum
 
-area.bcr
-    ###############
+    #select only cells with values over 75%
+    #ref.sum.75[ref.sum.75 < (max(terra::values(ref.sum), na.rm = TRUE)-max(terra::values(ref.sum), na.rm = TRUE)/4)] <- NA
+    
+    #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
+    ref.sum.val75 <- max(terra::values(ref.sum), na.rm = TRUE)-max(terra::values(ref.sum), na.rm = TRUE)/4
+    max.val <- max(terra::values(ref.sum), na.rm = TRUE)
+    #ref.sum.75 <- terra::mask(ref.sum.75, NA_rast) #mask using NAs from env variables 
+    
+    #area.ref <-sum(ref.sum.75[] >=ref.sum.val75 & ref.sum.75[] <= max.val, na.rm = TRUE) # get area of cells greater than 75%
+    
+    area.ref <-sum(ref.sum[] >=ref.sum.val75 & ref.sum[] <= max.val, na.rm = TRUE) # get area of cells greater than 75%
+    
+    #print(paste("area greater than 0.75.= ",area.ref, "km^2"))
+        #print(paste("Percentage relative to BCR4.0-4.1 is", round((area.ref/as.numeric(area.bcr))*100,2), "%"))
+
+    #1048071 [km^2]
+    ####### using cell size does not work, it may be including all the NAs as well
+    #ref.sum.75.crs <- ref.sum.75
+    #terra::crs(ref.sum.75.crs) <- rast.crs 
+    
+    
+    #cell_size<-terra::cellSize(ref.sum.75.crs, 
+     #                          unit = "km"#, transform=TRUE
+      #                         )
+    
+    #cell_size<-cell_size[!is.na(cell_size)]
+    #hig.ref.area <-length(cell_size)*median(cell_size)
+    
+    #print(paste("Area of high refugia values:",round(hig.ref.area, digits=1),"km2"))
+    
+
     
     suit.sum <- terra::app(terra::rast(suit.mean.list), "sum")#/length(suit.mean.list)
     assign(paste0(k,"suit.sum"), suit.sum)
     
+    #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
+    suit.sum.val75 <- max(terra::values(suit.sum), na.rm = TRUE)-max(terra::values(suit.sum), na.rm = TRUE)/4
+    suit.sum.max.val <- max(terra::values(suit.sum), na.rm = TRUE)
+
+
+    area.suit <-sum(suit.sum[] >=suit.sum.val75 & suit.sum[] <= suit.sum.max.val, na.rm = TRUE) # get area of cells greater than 75%
+    
+    
+    
     refxsuit.sum <- terra::app(terra::rast(refxsuit.mean.list), "sum")#/length(refxsuit.mean.list)
     assign(paste0(k,"refxsuit.sum"), refxsuit.sum)
+    #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
+    refxsuit.sum.val75 <- max(terra::values(refxsuit.sum), na.rm = TRUE)-max(terra::values(refxsuit.sum), na.rm = TRUE)/4
+    refxsuit.sum.max.val <- max(terra::values(refxsuit.sum), na.rm = TRUE)
+    
+    
+    area.refxsuit <-sum(refxsuit.sum[] >=refxsuit.sum.val75 & refxsuit.sum[] <= refxsuit.sum.max.val, na.rm = TRUE) # get area of cells greater than 75%
     
     
     #make sets of plots of only the 3 categories (ref, suit, ref x suit) per species grouping (res, ldm, sdm)
     three.cats  <- c(ref.sum, suit.sum, refxsuit.sum)
-    three.cats.names  <- c(paste0(k,".ref.sum"),paste0(k,".suit.sum"),paste0(k,".refxsuit.sum"))
+    three.cats.names  <- c(paste0(k,".refugia.sum"),paste0(k,".suitability.sum"),paste0(k,".refugia x suit.sum"))
+    three.cats.vals <- c(area.ref,area.suit, area.refxsuit )
     
     #no need of this if running all in a loop
     #thre.cats  <- c(LDM.ref.sum,LDM.suit.sum,LDM.refxsuit.sum)
@@ -281,7 +310,10 @@ area.bcr
         ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1)+ ### DIANA's paper style?
         ggplot2::theme(
           plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
-        )
+        )+
+        ggplot2::annotate("text", label=paste("High val areas rel to BCR", round((three.cats.vals[j]/as.numeric(area.bcr))*100,2), "%"),
+                          x=(-2291000), 
+                          y=( 1630000))
       
       three.cat.list[[j]] <- plot.one
       
@@ -296,7 +328,7 @@ area.bcr
   
   group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
   
-  ggsave(group_plots.png, filename = "group_plots.v3.png", path = "plots/", units = "in", width = 10, height = 9, dpi = 300, bg = "white")
+  ggsave(group_plots.png, filename = "group_plots.v3.png", path = "plots/", units = "in", width = 20, height = 18, dpi = 300, bg = "white")
   
   
   end.time <- Sys.time()
@@ -366,23 +398,3 @@ ggsave(all.plots, filename = "all.plots.SDM.png", path = "plots/", units = "in",
 
 #########
 
-#producing masking elements
-# produce a raster to clean Ref, suit, and refxsuit rasters
-Norm1991<-readRDS("data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS")
-NAKey<-subset(Norm1991,!is.na(Norm1991$bFFP))
-NAKey<-subset(NAKey,!is.na(NAKey$tri))
-NA_rast<-terra::rast(NAKey[1:3] , type="xyz")
-NA_rast[!is.na(NA_rast)] <-1
-rm("Norm1991")
-
-### produce a key to clean present distribution rasters, will work on RDS files, before rasterizing it to plot, 
-###### but not needed for me
-NAKey<-paste(NAKey$x,NAKey$y,sep=".") #raster squares with complete covariates only
-# Import key of masked AK regions (AK portion of BCR 3 + BCR 2) -------------------------------------
-AK_remove<-read.csv("data/YT Boreal Refugia Drive/YK Refugia Code and material/AK_removalregion.csv")
-AK_Key<-paste(AK_remove$x,AK_remove$y,sep=".")
-
-
-#crop NA_rast mask with one bird
-Scale <- rast(file.choose())
-NA_rast<-crop(NA_rast,Scale) #crop using file below
