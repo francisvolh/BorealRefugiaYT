@@ -269,6 +269,14 @@ summary(alpha.names)
 ### looking into the cleaned bird data
 
 all.birds <- read.csv("data/YT Boreal Refugia Drive/YK Refugia Code and material/AllBirdDataCleanedJul20.csv") # 
+length(unique(all.birds$LocationID))
+length(unique(all.birds$SurveyID))
+
+all.birds.filtered <- all.birds %>% 
+  filter(spp != "NULL")
+length(unique(all.birds.filtered$LocationID))
+length(unique(all.birds.filtered$SurveyID))
+
 
 all.birds.spp <- unique(all.birds$spp)
 
@@ -355,12 +363,28 @@ sppFit1991$sppFit1991val <- "sppFit1991"
 df.all.birds.merged <-merge(df.all.birds.merged, sppFit1991, by.x = "all.birds", by.y ="sppFit1991", all.x = TRUE)
 
 
-#write.csv(df.all.birds.merged, "data/df.all.birds.merged.csv")
+
+#df.all.birds.merged <- read.csv( "data/df.all.birds.merged.csv")
+
+
+####
+#classification for groupings
+class_spp <- read.csv("data/SpeciesStatus.csv")
+names(class_spp)
+unique(class_spp$Migration1)
+class_spp <- dplyr::select(class_spp, c("species_code", "Migration1"))
+
+names(df.all.birds.merged)
+df.all.birds.merged <-merge(df.all.birds.merged, class_spp, by.x = "all.birds", by.y ="species_code", all.x = TRUE)
+
+#write.csv(df.all.birds.merged, "data/df.all.birds.merged.csv", row.names= FALSE)
 
 #####
 #look at a the fit BRT stats of one bird
 #AMPI has no model, to check fit
 #is not posthoc removed
+
+
 
 #ALFL
 load(file.choose() )
@@ -369,7 +393,12 @@ summary(GBM)
 
 summary(GBM[1])
 
-GBM
+first.list <- GBM[1]
+
+firs.first <- first.list[[1]]
+firs.first$fit
+firs.first$initF
+
 
 ################################################
 names(all.birds)
@@ -441,6 +470,8 @@ for (i in seq_along(plot_chunks)) {
   
   #ggsave(paste0("plots/model_bird_plots_",i,".png"), p, units = 'in', width = 17, height = 9)
 }
+
+
 
 ### to viz the plots more interactively
 
