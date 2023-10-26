@@ -128,6 +128,8 @@ ref.ras.dir <- "data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Hab
 
 
 # produce a raster to clean Ref, suit, and refxsuit rasters
+rast.crs<- terra::crs(terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif")) ## from data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif
+
 Norm1991<-readRDS("data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS")
 NAKey<-subset(Norm1991,!is.na(Norm1991$bFFP))
 NAKey<-subset(NAKey,!is.na(NAKey$tri))
@@ -148,12 +150,6 @@ NAKey<-paste(NAKey$x,NAKey$y,sep=".") #raster squares with complete covariates o
 # Import key of masked AK regions (AK portion of BCR 3 + BCR 2) -------------------------------------
 AK_remove<-read.csv("data/YT Boreal Refugia Drive/YK Refugia Code and material/AK_removalregion.csv")
 AK_Key<-paste(AK_remove$x,AK_remove$y,sep=".")
-
-sample.rast.clim <-terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif")# CLIMATE sample raster for CRS definition later
-
-rast.crs<- terra::crs(terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif")) 
-
-# NOT NEEDED ANYMORE: Pick vector of Spp group to run in the loop!
 
 ### adding calculation of BCR 4.1 and 4.0 area
 BCR4.1_4.0 <- sf::st_union(BCR4.1_USACAN, BCR4.0_USACAN)
@@ -208,64 +204,55 @@ area.bcr
     #for SDM also did average to compare that visually look the same, Diana agrees they are the same
     
     ref.sum <- terra::app(terra::rast(ref.mean.list), "sum")#/length(ref.mean.list)
-    assign(paste0(k,"ref.sum"), ref.sum) #rename object according to loop cycle (spp grouping)
+    #assign(paste0(k,"ref.sum"), ref.sum) #rename object according to loop cycle (spp grouping)
     
 ################attempt to estimate area size of 75% refugia index
 #### incorporate into graphs??? rather than print()
     ref.sum.75 <- ref.sum
-
-    #select only cells with values over 75%
-    #ref.sum.75[ref.sum.75 < (max(terra::values(ref.sum), na.rm = TRUE)-max(terra::values(ref.sum), na.rm = TRUE)/4)] <- NA
-    
-    #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
     ref.sum.val75 <- max(terra::values(ref.sum), na.rm = TRUE)-max(terra::values(ref.sum), na.rm = TRUE)/4
-    max.val <- max(terra::values(ref.sum), na.rm = TRUE)
-    #ref.sum.75 <- terra::mask(ref.sum.75, NA_rast) #mask using NAs from env variables 
     
-    #area.ref <-sum(ref.sum.75[] >=ref.sum.val75 & ref.sum.75[] <= max.val, na.rm = TRUE) # get area of cells greater than 75%
+    ref.sum.test <- ifelse(ref.sum[]>=ref.sum.val75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+    area.ref <-sum(ref.sum.test, na.rm = TRUE)
     
-    area.ref <-sum(ref.sum[] >=ref.sum.val75 & ref.sum[] <= max.val, na.rm = TRUE) # get area of cells greater than 75%
-    
-    #print(paste("area greater than 0.75.= ",area.ref, "km^2"))
-        #print(paste("Percentage relative to BCR4.0-4.1 is", round((area.ref/as.numeric(area.bcr))*100,2), "%"))
+    #this should be the same as below, with cellSize
+  
+    #print(paste("area greater than 0.75.=",round(area.ref,2), "km^2"))
+    #print(paste("Percentage relative to BCR4.0-4.1 is", round((area.ref/as.numeric(area.bcr))*100,2), "%"))
 
-    #1048071 [km^2]
-    ####### using cell size does not work, it may be including all the NAs as well
-    #ref.sum.75.crs <- ref.sum.75
+    ###################################### using cell size does work, and it may be more precise #########################
+    #ref.sum.75.crs <- ref.sum
     #terra::crs(ref.sum.75.crs) <- rast.crs 
     
+    #ref.sum.75.crs[ref.sum.75.crs[]<ref.sum.val75]<-NA
     
     #cell_size<-terra::cellSize(ref.sum.75.crs, 
-     #                          unit = "km"#, transform=TRUE
-      #                         )
+            #                 unit = "km", #transform=TRUE
+             #                 mask = TRUE )
+    #b_sum <- terra::global(cell_size, fun = "sum", na.rm = TRUE)
     
-    #cell_size<-cell_size[!is.na(cell_size)]
-    #hig.ref.area <-length(cell_size)*median(cell_size)
+    #######terra::expanse(ref.sum.75.crs, unit = "km") 
+    ## using expanse after making the NA below the threshold
+    #would yield the same but would need more time to compute, x9 times more time
     
-    #print(paste("Area of high refugia values:",round(hig.ref.area, digits=1),"km2"))
+    ################################################################################################################## 
     
-
     
     suit.sum <- terra::app(terra::rast(suit.mean.list), "sum")#/length(suit.mean.list)
-    assign(paste0(k,"suit.sum"), suit.sum)
+    #assign(paste0(k,"suit.sum"), suit.sum)
     
     #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
     suit.sum.val75 <- max(terra::values(suit.sum), na.rm = TRUE)-max(terra::values(suit.sum), na.rm = TRUE)/4
-    suit.sum.max.val <- max(terra::values(suit.sum), na.rm = TRUE)
-
-
-    area.suit <-sum(suit.sum[] >=suit.sum.val75 & suit.sum[] <= suit.sum.max.val, na.rm = TRUE) # get area of cells greater than 75%
+    suit.sum.test <- ifelse(suit.sum[]>=suit.sum.val75, 1, NA)
+    area.suit <-sum(suit.sum.test[], na.rm = TRUE)
     
     
     
     refxsuit.sum <- terra::app(terra::rast(refxsuit.mean.list), "sum")#/length(refxsuit.mean.list)
-    assign(paste0(k,"refxsuit.sum"), refxsuit.sum)
+    #assign(paste0(k,"refxsuit.sum"), refxsuit.sum)
     #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
     refxsuit.sum.val75 <- max(terra::values(refxsuit.sum), na.rm = TRUE)-max(terra::values(refxsuit.sum), na.rm = TRUE)/4
-    refxsuit.sum.max.val <- max(terra::values(refxsuit.sum), na.rm = TRUE)
-    
-    
-    area.refxsuit <-sum(refxsuit.sum[] >=refxsuit.sum.val75 & refxsuit.sum[] <= refxsuit.sum.max.val, na.rm = TRUE) # get area of cells greater than 75%
+    refxsuit.test <- ifelse(refxsuit.sum[]>=refxsuit.sum.val75, 1, NA)
+    area.refxsuit <-sum(refxsuit.test[], na.rm = TRUE)
     
     
     #make sets of plots of only the 3 categories (ref, suit, ref x suit) per species grouping (res, ldm, sdm)
@@ -311,6 +298,9 @@ area.bcr
         ggplot2::theme(
           plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
         )+
+        ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[j],2)),
+                          x=(-2291000), 
+                          y=( 1680000))+
         ggplot2::annotate("text", label=paste("High val areas rel to BCR", round((three.cats.vals[j]/as.numeric(area.bcr))*100,2), "%"),
                           x=(-2291000), 
                           y=( 1630000))
@@ -333,7 +323,7 @@ area.bcr
   
   end.time <- Sys.time()
   
-  print(paste("total duration of run", (end.time-begin.time)))
+  print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
 }
 
 
