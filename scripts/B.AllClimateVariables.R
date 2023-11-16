@@ -355,3 +355,86 @@ FunDatTerra <- function(x, y) {
 #}
 
 
+   ########### END OF CURRENT CLIMATE NORMALS ############
+   
+   ######################################################
+   ### PART III.  Extract Future climate data from   ####
+   ### full region for predictions                   ####
+   ######################################################
+   
+   ### https://adaptwest.databasin.org/pages/adaptwest-climatena/ ####
+   ### From Mahony et al. 2022 and using 3 projection models
+   ### for the NWN, we should use: CNRM, UK and EC models
+   ### If *excluding* UK model we should use ACC model
+   ### UK model exceeds the predicted temperature buffer (ESC) ("very likely" scenario)
+   ### however there is evidence that changes in cloud state could create such a scenario..)
+   ### CNRM-ESM2-1,UKESM1.0-LL, EC-Earth3, + ACCESS-ESM1.5 where not using the UK
+   ######################################################
+   
+   #### Projection buffer: just region of interest and 150m edge
+   EcozonesFut <- sf::st_buffer(Ecozones, 150) # future climate, buffer at edge
+   
+   # Topographic Data
+   TopoFut<-terra::crop(TopoBuf,EcozonesFut)
+   
+   # Add standardized survey type and year raster layer
+   year<-Cat<-TopoFut[[1]]
+   values(year)<-2022
+   names(year)<-"year"
+   values(Cat)<- 1
+   names(Cat)<-"Cat"
+   
+   #### Import Future climate datasets
+   FolderPath<-'/Users//annadrake/Desktop/Yukon Project Data/qpad-offsets-main/2071_rasters/'
+   ClimMod<-c("CNRMESM21","ECEarth3","UKESM10LL")
+   Scenario<-c("_26_2071","_45_2071","_70_2071") #2.6,4.5,7.0 emission scenarios, end of century
+   
+   ### Get the GCM and Emission Scenario of interest
+   for (i in 1:length(ClimMod)) { #Call GCM
+     for (j in 1:length(Scenario)) { #Call Scenario
+       setwd(paste(FolderPath,ClimMod[i],Scenario[j],sep=""))
+       Projrast<- list.files(pattern='.tif$', all.files=TRUE, full.names=FALSE)
+       
+       #Stack rasters for given scenario/GCM
+       Projection<-list()
+       for (k in 1:length(Projrast)) {
+         Projection[[k]]<-rast(Projrast[[k]])
+         Projection[[k]]<- crop(Projection[[k]], EcozonesFut)
+         # Get rid of awkward column labels, append 150m 
+         names(Projection[[k]])<-gsub("CNRMESM21_ssp126_2071_2100_","",names(Projection[[k]]))
+         names(Projection[[k]])<-gsub("CNRMESM21_ssp245_2071_2100_","",names(Projection[[k]]))
+         names(Projection[[k]])<-gsub("CNRMESM21_ssp370_2071_2100_","",names(Projection[[k]]))
+         names(Projection[[k]])<-gsub("ECEarth3_ssp126_2071_2100_","",names(Projection[[k]]))
+         names(Projection[[k]])<-gsub("ECEarth3_ssp245_2071_2100_","",names(Projection[[k]]))
+         names(Projection[[k]])<-gsub("ECEarth3_ssp370_2071_2100_","",names(Projection[[k]]))
+         names(Projection[[k]])<-gsub("UKESM10LL_ssp126_2071_2100_","",names(Projection[[k]]))
+         names(Projection[[k]])<-gsub("UKESM10LL_ssp245_2071_2100_","",names(Projection[[k]]))
+         names(Projection[[k]])<-gsub("UKESM10LL_ssp370_2071_2100_","",names(Projection[[k]]))
+       } # end of climate variables
+       
+       # deal with errors in FFP dates/data
+       error<-Projection[[9]]-Projection[[5]] # where FFP exceeds NFFD (nonsensical)
+       Projection[[1]] <-overlay(Projection[[1]], error, fun = FunDat)
+       names(Projection[[1]])<-"bFFP"
+       Projection[[3]] <- overlay(Projection[[3]], error, fun = FunDat)
+       names(Projection[[3]])<-"eFFP"
+       #correct FFP 
+       Projection[[5]] <- overlay(Projection[[5]], Projection[[9]], fun = FunCorr)
+       names(Projection[[5]])<-"FFP"
+       # add thaw metric
+       Thaw<-Projection[[9]]-Projection[[5]]
+       names(Thaw)<-"Thaw"
+       
+       #Stack 
+       ProjStack<-stack(Projection[1:length(Projrast)]) #stack them
+       ProjStack<-addLayer(ProjStack,Thaw,year,Cat,TopoFut) # add remaining layers
+       writeRaster(ProjStack, paste(dir,"/Ecozone_Climate/",ClimMod[i],"_",Scenario[j],names(ProjStack),sep=""), bylayer=TRUE,format="GTiff",overwrite=TRUE)
+       
+       #Pare down and write out as dataframe
+       Climate<-as.data.frame(ProjStack, xy=TRUE)
+       Climate<-subset(Climate, !is.na(Climate$EMT)) # get rid of ocean data
+       saveRDS(Climate, paste(dir,"/BRT_output/FutureRasters/",ClimMod[i],"_",Scenario[j],".rds",sep=""))
+     }# End of scenarios
+   } # end of GCM
+   
+   ################# END OF FUTURE CLIMATE NORMALS ###################
