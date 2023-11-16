@@ -4,57 +4,11 @@ library(terra)
 library(sf)
 library(tidyterra)
 
-sample.birds.rast <- rast(file.choose())
 
-crs(sample.birds.rast)<-crs(usa_can_crop)
-
-usa_can_crop <- st_crop(usa_can_crop, sample.birds.rast)
-
-ggplot()+
-  geom_spatraster(data =sample.birds.rast)+
-  scale_colour_viridis_c(na.value = NA)+
-  geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
-  geom_sf(data = BCR4.1_USACAN, aes(), linewidth=2 ,color = "red", fill = "blue", alpha = 0)+
-  geom_sf(data = BCR4.0_USACAN, aes(), linewidth=2 ,color = "red", fill = "red", alpha = 0)+
-  coord_sf(xlim=c(ext(sample.birds.rast)[1], ext(sample.birds.rast)[2]),
-           ylim = c(ext(sample.birds.rast)[3], ext(sample.birds.rast)[4]),
-           expand = FALSE)+
-  scale_fill_terrain_c(na.value = NA)+
-  theme(
-    plot.margin = margin(0,0,0,0, "cm")
-  )+
-  theme_bw()
-                  
-#viridis paletes
-#"magma" (or "A")
-#"inferno" (or "B")
-#"plasma" (or "C")
-#"viridis" (or "D")
-#"cividis" (or "E")
-#"rocket" (or "F")
-#"mako" (or "G")
-#"turbo" (or "H")
-
-ggplot()+
-  geom_spatraster(data =sample.birds.rast)+
-  geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
-  geom_sf(data = BCR4.1_USACAN, aes(), linewidth=2 ,color = "red", fill = "blue", alpha = 0)+
-  geom_sf(data = BCR4.0_USACAN, aes(), linewidth=2 ,color = "red", fill = "red", alpha = 0)+
-  coord_sf(xlim=c(ext(sample.birds.rast)[1], ext(sample.birds.rast)[2]),
-           ylim = c(ext(sample.birds.rast)[3], ext(sample.birds.rast)[4]),
-           expand = FALSE)+
-  #scale_fill_terrain_c()+ ###WORKS! may be best because of white color on zeros,   na.value = NA not doing anything in this 
-  #scale_fill_distiller()+
-  #scale_fill_binned(type = "viridis")
-  #scale_fill_continuous(type = "viridis")+
-  #scale_fill_gradient(low="red", high="green")+
-  theme_bw()+
-  scale_fill_viridis_c(option = "turbo")+ ### DIANA's paper style?
-  theme(
-    plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
-  )
-              
+#################################################################################### 
 ################### Produce group classification to sum and plot ################### 
+
+
 #load classification file and make make vectors with codes
 #class_spp <- read.csv("data/SpeciesStatus.csv")
 
@@ -62,8 +16,9 @@ ggplot()+
 
 df.spp.names.merged <- read.csv("data/df.all.birds.merged.csv", #stringsAsFactors = TRUE, 
                                 na.strings=c("NA","NaN", ""))
-names(df.spp.names.merged)
-summary(df.spp.names.merged)
+#names(df.spp.names.merged)
+#summary(df.spp.names.merged)
+
 #already merged Diana list of categories to the df.merged, need to assign some missing values
 #spp.to.work <- df.spp.names.merged %>% 
  # filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
@@ -113,10 +68,17 @@ groupings_labs <- c("LDM","SDM","RES"#,"NOM"#,"N_assig"
 groupings <- c(LDM,SDM,RES#,NOM#,N_assig
                )
 
+max.len <- max(length(LDM),length(SDM),length(RES))
+SDM.spp = c(SDM, rep(NA, max.len - length(SDM)))
+LDM.spp = c(LDM, rep(NA, max.len - length(LDM)))
+RES.spp = c(RES, rep(NA, max.len - length(RES)))
+cat.spp.df<-data.frame(SDM.spp, LDM.spp, RES.spp)
+
 #load maps
 BCR4.1_USACAN<-sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.1_USACAN.shp")
 BCR4.0_USACAN  <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.0_USACAN.shp")
-
+canada <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_CAN_shp/gadm36_CAN_0.shp")
+USA <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_USA_shp/gadm36_USA_0.shp")
 
 #set refugia raster results directory
 #the file list
@@ -126,30 +88,60 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refu
 ref.ras.dir <- "data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability MEAN/"
 
 
-
 # produce a raster to clean Ref, suit, and refxsuit rasters
 rast.crs<- terra::crs(terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif")) ## from data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif
-
-Norm1991<-readRDS("data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS")
+Norm1991<-readRDS(file.choose()) #test with my file
+Norm1991<-readRDS("data/Norm1991_EcozoneNormals.rds") ## THE ECOZONES FILE FROM ANNA
 NAKey<-subset(Norm1991,!is.na(Norm1991$bFFP))
 NAKey<-subset(NAKey,!is.na(NAKey$tri))
 NA_rast<-terra::rast(NAKey , type="xyz")
 NA_rast[!is.na(NA_rast)] <-1
+#load a bird refugia raster
 bird_rast <- terra::rast("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability MEAN/ALFL_Refugia_RCPmean.tiff")
 NA_rast <-terra::crop(NA_rast,bird_rast)
 NA_rast <-NA_rast[[1]]
 
 NA_rast.crs <- NA_rast
 terra::crs(NA_rast.crs) <- rast.crs
-  
+rm(NAKey) 
 rm("Norm1991")
+
+
+ggplot()+
+  geom_sf(data = usa_can_crop)+
+  geom_spatraster(data = NA_rast.crs)
 
 ### produce a key to clean present distribution rasters, will work on RDS files, before rasterizing it to plot, 
 ###### but not needed for me
-NAKey<-paste(NAKey$x,NAKey$y,sep=".") #raster squares with complete covariates only
+#NAKey<-paste(NAKey$x,NAKey$y,sep=".") #raster squares with complete covariates only
+
 # Import key of masked AK regions (AK portion of BCR 3 + BCR 2) -------------------------------------
 AK_remove<-read.csv("data/YT Boreal Refugia Drive/YK Refugia Code and material/AK_removalregion.csv")
-AK_Key<-paste(AK_remove$x,AK_remove$y,sep=".")
+AK_remove<-terra::rast(AK_remove[,2:4] , type="xyz")
+AKrast <- AK_remove
+AKrast[is.na(AKrast)] <- 10 #assign a random high value to NAs 
+AKrast <- ifel(AKrast < 9, NA, AKrast)
+#terra::crs(AKrast) <- rast.crs
+AKrast <-terra::crop(AKrast, NA_rast)
+
+
+usa_can_crop <- sf::st_union(canada, USA) 
+usa_can_crop <- sf::st_transform(usa_can_crop, rast.crs )
+usa_can_crop <- st_crop(usa_can_crop, c(xmin=as.numeric(terra::ext(bird_rast)[1]), 
+                                        xmax=as.numeric(terra::ext(bird_rast)[2]), 
+                                        ymin=as.numeric(terra::ext(bird_rast)[3]), 
+                                        ymax=as.numeric(terra::ext(bird_rast)[4])
+                                        ))
+
+AA<-ggplot()+
+  #geom_sf(data = usa_can_crop)+
+  geom_spatraster(data = AK_remove)
+
+BB<-ggplot()+
+  geom_spatraster(data = AK_remove)+
+  geom_sf(data = usa_can_crop, fill = "yellow", alpha = 0.3)
+cowplot::plot_grid(AA, BB, nrow = 1)         
+#AK_Key<-paste(AK_remove$x,AK_remove$y,sep=".")
 
 ### adding calculation of BCR 4.1 and 4.0 area
 BCR4.1_4.0 <- sf::st_union(BCR4.1_USACAN, BCR4.0_USACAN)
@@ -186,10 +178,19 @@ area.bcr
       #rasters are sometimes tif or tiff, so the grep() solves it
       ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
       name1<-terra::varnames(ref.ras1)
-      ref.ras1 <- terra::mask(ref.ras1, NA_rast) #mask using NAs from env variables 
+      ref.ras1 <- terra::mask(ref.ras1, NA_rast)#mask using NAs from env variables 
+      ref.ras1 <- terra::mask(ref.ras1, AKrast)
+      
       terra::varnames(ref.ras1)<-name1
       suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
+      suit.ras1 <- terra::mask(suit.ras1, NA_rast)#mask using NAs from env variables 
+      suit.ras1 <- terra::mask(suit.ras1, AKrast)
+      
+      
       refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
+      refxsuit.ras1 <- terra::mask(refxsuit.ras1, NA_rast)#mask using NAs from env variables 
+      refxsuit.ras1 <- terra::mask(refxsuit.ras1, AKrast)
+      
       names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
       names(suit.ras1) <- terra::varnames(suit.ras1)
       
@@ -281,9 +282,10 @@ area.bcr
       
       plot.one <- ggplot()+
         tidyterra::geom_spatraster(data =rast1)+
-        #geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.5 ,color = "black", fill = "blue", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1.5 ,color = "black", fill = "red", alpha = 0)+
+        ggplot2::geom_sf(data = usa_can_crop, aes(), alpha = 0 )+
+       #geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+        
+        ggplot2::geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.1 ,color = "black", fill = "blue", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1. ,color = "black", fill = "red", alpha = 0)+
         ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
                           ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
                           expand = FALSE)+
@@ -294,7 +296,7 @@ area.bcr
         #scale_fill_gradient(low="red", high="green")+
         ggplot2::theme_bw()+
         ggplot2::ggtitle(three.cats.names[[j]])+
-        ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1)+ ### DIANA's paper style?
+        ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="white")+ ### DIANA's paper style?
         ggplot2::theme(
           plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
         )+
@@ -318,13 +320,15 @@ area.bcr
   
   group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
   
-  ggsave(group_plots.png, filename = "group_plots.v3.png", path = "plots/", units = "in", width = 20, height = 18, dpi = 300, bg = "white")
+  ggsave(group_plots.png, filename = "group_plots.5.png", path = "plots/", units = "in", width = 22, height = 20, dpi = 300, bg = "white")
   
   
   end.time <- Sys.time()
   
   print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
 }
+
+group_plots.png
 
 
 ##############################################################
@@ -387,4 +391,55 @@ all.plots <- cowplot::plot_grid(plotlist = list.bird.plots, nrow = graph.rows, n
 ggsave(all.plots, filename = "all.plots.SDM.png", path = "plots/", units = "in", width = 10, height = 3*graph.rows, dpi = 300, bg = "white")
 
 #########
+
+#################### additional code to look at stuff######################
+sample.birds.rast <- rast(file.choose())
+
+crs(sample.birds.rast)<-crs(usa_can_crop)
+
+usa_can_crop <- st_crop(usa_can_crop, sample.birds.rast)
+
+ggplot()+
+  geom_spatraster(data =sample.birds.rast)+
+  scale_colour_viridis_c(na.value = NA)+
+  geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
+  geom_sf(data = BCR4.1_USACAN, aes(), linewidth=2 ,color = "red", fill = "blue", alpha = 0)+
+  geom_sf(data = BCR4.0_USACAN, aes(), linewidth=2 ,color = "red", fill = "red", alpha = 0)+
+  coord_sf(xlim=c(ext(sample.birds.rast)[1], ext(sample.birds.rast)[2]),
+           ylim = c(ext(sample.birds.rast)[3], ext(sample.birds.rast)[4]),
+           expand = FALSE)+
+  scale_fill_terrain_c(na.value = NA)+
+  theme(
+    plot.margin = margin(0,0,0,0, "cm")
+  )+
+  theme_bw()
+
+#viridis paletes
+#"magma" (or "A")
+#"inferno" (or "B")
+#"plasma" (or "C")
+#"viridis" (or "D")
+#"cividis" (or "E")
+#"rocket" (or "F")
+#"mako" (or "G")
+#"turbo" (or "H")
+
+ggplot()+
+  geom_spatraster(data =sample.birds.rast)+
+  geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
+  geom_sf(data = BCR4.1_USACAN, aes(), linewidth=2 ,color = "red", fill = "blue", alpha = 0)+
+  geom_sf(data = BCR4.0_USACAN, aes(), linewidth=2 ,color = "red", fill = "red", alpha = 0)+
+  coord_sf(xlim=c(ext(sample.birds.rast)[1], ext(sample.birds.rast)[2]),
+           ylim = c(ext(sample.birds.rast)[3], ext(sample.birds.rast)[4]),
+           expand = FALSE)+
+  #scale_fill_terrain_c()+ ###WORKS! may be best because of white color on zeros,   na.value = NA not doing anything in this 
+  #scale_fill_distiller()+
+  #scale_fill_binned(type = "viridis")
+  #scale_fill_continuous(type = "viridis")+
+  #scale_fill_gradient(low="red", high="green")+
+  theme_bw()+
+  scale_fill_viridis_c(option = "turbo")+ ### DIANA's paper style?
+  theme(
+    plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
+  )
 
