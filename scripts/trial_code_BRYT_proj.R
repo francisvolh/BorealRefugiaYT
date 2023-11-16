@@ -364,7 +364,7 @@ df.all.birds.merged <-merge(df.all.birds.merged, sppFit1991, by.x = "all.birds",
 
 
 
-#df.all.birds.merged <- read.csv( "data/df.all.birds.merged.csv")
+
 
 
 ####
@@ -377,7 +377,57 @@ class_spp <- dplyr::select(class_spp, c("species_code", "Migration1"))
 names(df.all.birds.merged)
 df.all.birds.merged <-merge(df.all.birds.merged, class_spp, by.x = "all.birds", by.y ="species_code", all.x = TRUE)
 
+
+
+
+
+
+out_range <-c( "AMRE", 	"BAWW",	"BBWA",	"BHVI",	"CAWA",
+               "CCSP",	"CMWA",	"EUST",	"EVGR",	"HOSP",
+               "MAWA",	"MOWA",	"OVEN","PAWA",	"PIWO",	
+               "RBGR", 	"REVI",	"SWSP",	 "VESP", 	"WIWR",
+               "AMCR")
+out_range_df<-data.frame( spp = out_range, dropped = "out_range")
+
+bad_qpad<-c("BRBL","GCSP","RECR","TOWA","TOSO")
+bad_qpad_df<-data.frame( spp = bad_qpad, dropped = "bad_qpad")
+
+raptors <- c("BAEA", "OSPR", "AMKE", "RTHA",  "SOGR", "NOHA","MERL")
+raptors_df <- data.frame( spp = raptors, dropped = "raptors")
+
+irruptive <- c("CORE", "PISI", "WWCR", "CONI")
+irruptive_df <- data.frame( spp = irruptive, dropped = "irruptive")
+
+no_offsets <- c("VGSW", "MOCH", "MGWA", "CAHU", "BHGR", "CBCH", "NRWS", "PAWR", 
+                "PSFL", "RBSA", "RUHU", "STJA", "WEME", "WIFL")
+no_offsets_df <- data.frame( spp = no_offsets, dropped = "no_offsets")
+
+colonial<-"BANS"
+colonial_df <- data.frame( spp = colonial, dropped = "colonial")
+
+unknown_drop <- c("AMPI", "BCCH", "BEKI", "BHCO", "BOWA", "LALO", "PHVI", "RUBL", "WETA", "WEWP", "WIPT")
+unknown_drop_df <- data.frame( spp = unknown_drop, dropped = "unknown_drop")
+
+dropped_spp_df <- rbind(out_range_df,bad_qpad_df,raptors_df,irruptive_df,no_offsets_df,colonial_df,unknown_drop_df)
+
+
+df.all.birds.merged <- merge(df.all.birds.merged, dropped_spp_df, by.x = "all.birds", by.y = "spp", all.x = TRUE)
+
+
+
 #write.csv(df.all.birds.merged, "data/df.all.birds.merged.csv", row.names= FALSE)
+
+#df.all.birds.merged <- read.csv( "data/df.all.birds.merged.csv", na.strings = c("", "NA"))
+
+df.all.birds.merged[ ,c("all.birds", "dropped_spp", "Ref_x_Hab_Suit_Mean" )] %>% 
+  filter(is.na(Ref_x_Hab_Suit_Mean)) %>% 
+  filter(is.na(dropped_spp)) %>% 
+  pull(all.birds)
+
+df.all.birds.merged[ ,c("all.birds", "sppFit1991val", "Ref_x_Hab_Suit_Mean" )] %>% 
+  filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
+  filter(is.na(sppFit1991val)) %>% 
+  pull(all.birds)
 
 #####
 #look at a the fit BRT stats of one bird
