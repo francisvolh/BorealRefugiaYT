@@ -3,7 +3,7 @@ library(dplyr)
 library(terra)
 library(sf)
 library(tidyterra)
-
+library(leaflet)
 
 #################################################################################### 
 ################### Produce group classification to sum and plot ################### 
@@ -63,21 +63,21 @@ N_assig <- df.spp.names.merged %>%
   select(all.birds) %>% 
   pull()
 
-groupings_labs <- c("LDM","SDM","RES"#,"NOM"#,"N_assig"
+groupings_labs <- c("RES","LDM","SDM"#,"NOM"#,"N_assig"
                     )
-groupings <- c(LDM,SDM,RES#,NOM#,N_assig
+groupings <- c(RES,LDM,SDM#,NOM#,N_assig
                )
 
-max.len <- max(length(LDM),length(SDM),length(RES))
-SDM.spp = c(SDM, rep(NA, max.len - length(SDM)))
-LDM.spp = c(LDM, rep(NA, max.len - length(LDM)))
-RES.spp = c(RES, rep(NA, max.len - length(RES)))
-cat.spp.df<-data.frame(SDM.spp, LDM.spp, RES.spp)
+#max.len <- max(length(LDM),length(SDM),length(RES))
+#SDM.spp = c(SDM, rep(NA, max.len - length(SDM)))
+#LDM.spp = c(LDM, rep(NA, max.len - length(LDM)))
+#RES.spp = c(RES, rep(NA, max.len - length(RES)))
+#cat.spp.df<-data.frame(SDM.spp, LDM.spp, RES.spp)
 
 #load maps
 BCR4.1_USACAN<-sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.1_USACAN.shp")
 BCR4.0_USACAN  <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.0_USACAN.shp")
-canada <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_CAN_shp/gadm36_CAN_0.shp")
+canada <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_CAN_shp/gadm36_CAN_1.shp")
 USA <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_USA_shp/gadm36_USA_0.shp")
 
 #set refugia raster results directory
@@ -90,26 +90,53 @@ ref.ras.dir <- "data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Hab
 
 # produce a raster to clean Ref, suit, and refxsuit rasters
 rast.crs<- terra::crs(terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif")) ## from data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif
-Norm1991<-readRDS(file.choose()) #test with my file
+Norm1991<-readRDS("data/corrected_rasters_clim_topo/all_rasts_Correct_Ecozones.RDS") #test with my file
 Norm1991<-readRDS("data/Norm1991_EcozoneNormals.rds") ## THE ECOZONES FILE FROM ANNA
 NAKey<-subset(Norm1991,!is.na(Norm1991$bFFP))
 NAKey<-subset(NAKey,!is.na(NAKey$tri))
 NA_rast<-terra::rast(NAKey , type="xyz")
+NA_rast <-NA_rast[[1]]
+
 NA_rast[!is.na(NA_rast)] <-1
 #load a bird refugia raster
 bird_rast <- terra::rast("data/YT Boreal Refugia Drive/Rasters_1991_Normal_Refugia and Habitat Suitability/1991 Refugia Habitat Suitability MEAN/ALFL_Refugia_RCPmean.tiff")
 NA_rast <-terra::crop(NA_rast,bird_rast)
-NA_rast <-NA_rast[[1]]
+
 
 NA_rast.crs <- NA_rast
 terra::crs(NA_rast.crs) <- rast.crs
 rm(NAKey) 
 rm("Norm1991")
 
+#usa_can_crop <- sf::st_union(canada, USA) keep each country separate
 
-ggplot()+
-  geom_sf(data = usa_can_crop)+
-  geom_spatraster(data = NA_rast.crs)
+usa_crop <- sf::st_transform(USA, rast.crs )
+
+usa_crop <- st_crop(usa_crop, c(xmin=as.numeric(terra::ext(bird_rast)[1]), 
+                                        xmax=as.numeric(terra::ext(bird_rast)[2]), 
+                                        ymin=as.numeric(terra::ext(bird_rast)[3]), 
+                                        ymax=as.numeric(terra::ext(bird_rast)[4])
+))
+
+canada_crop <- sf::st_transform(canada, rast.crs )
+
+canada_crop <- st_crop(canada_crop, c(xmin=as.numeric(terra::ext(bird_rast)[1]), 
+                                xmax=as.numeric(terra::ext(bird_rast)[2]), 
+                                ymin=as.numeric(terra::ext(bird_rast)[3]), 
+                                ymax=as.numeric(terra::ext(bird_rast)[4])
+))
+
+can_us_crop <- sf::st_union(canada_crop, usa_crop)
+
+#NA_rast.crs_crop <- terra::mask(NA_rast.crs, can_us_crop)
+
+#create ocean ploygon for loop plotting later
+poly <- can_us_crop %>% 
+  st_as_sf(coords = c("lon", "lat")) %>% 
+  st_bbox() %>% 
+  st_as_sfc() %>% 
+  st_transform(rast.crs)
+
 
 ### produce a key to clean present distribution rasters, will work on RDS files, before rasterizing it to plot, 
 ###### but not needed for me
@@ -125,32 +152,32 @@ AKrast <- ifel(AKrast < 9, NA, AKrast)
 AKrast <-terra::crop(AKrast, NA_rast)
 
 
-usa_can_crop <- sf::st_union(canada, USA) 
-usa_can_crop <- sf::st_transform(usa_can_crop, rast.crs )
-usa_can_crop <- st_crop(usa_can_crop, c(xmin=as.numeric(terra::ext(bird_rast)[1]), 
-                                        xmax=as.numeric(terra::ext(bird_rast)[2]), 
-                                        ymin=as.numeric(terra::ext(bird_rast)[3]), 
-                                        ymax=as.numeric(terra::ext(bird_rast)[4])
-                                        ))
 
-AA<-ggplot()+
+
+#AA<-ggplot()+
   #geom_sf(data = usa_can_crop)+
-  geom_spatraster(data = AK_remove)
+ # geom_spatraster(data = AK_remove)
 
-BB<-ggplot()+
-  geom_spatraster(data = AK_remove)+
-  geom_sf(data = usa_can_crop, fill = "yellow", alpha = 0.3)
-cowplot::plot_grid(AA, BB, nrow = 1)         
+#BB<-ggplot()+
+ # geom_spatraster(data = AK_remove)+
+  #geom_sf(data = usa_can_crop, fill = "yellow", alpha = 0.3)
+#cowplot::plot_grid(AA, BB, nrow = 1)         
 #AK_Key<-paste(AK_remove$x,AK_remove$y,sep=".")
 
 ### adding calculation of BCR 4.1 and 4.0 area
 BCR4.1_4.0 <- sf::st_union(BCR4.1_USACAN, BCR4.0_USACAN)
 area.bcr<-sf::st_area(BCR4.1_4.0)
 units(area.bcr) <- units::as_units("km2")
-area.bcr
+#area.bcr
 ###
-#########################    
 
+
+
+
+
+#########################    
+### PRODUCE SUMMARY GRAPHS FOR REFUGIA, SUITABILITY, and REFxSUIT scores
+# for GROUPING categories 
 
 #Curent loop runs over all predefined groups
 {
@@ -208,7 +235,7 @@ area.bcr
     #assign(paste0(k,"ref.sum"), ref.sum) #rename object according to loop cycle (spp grouping)
     
 ################attempt to estimate area size of 75% refugia index
-#### incorporate into graphs??? rather than print()
+#### incorporate into graphs--- rather than print()
     ref.sum.75 <- ref.sum
     ref.sum.val75 <- max(terra::values(ref.sum), na.rm = TRUE)-max(terra::values(ref.sum), na.rm = TRUE)/4
     
@@ -261,29 +288,18 @@ area.bcr
     three.cats.names  <- c(paste0(k,".refugia.sum"),paste0(k,".suitability.sum"),paste0(k,".refugia x suit.sum"))
     three.cats.vals <- c(area.ref,area.suit, area.refxsuit )
     
-    #no need of this if running all in a loop
-    #thre.cats  <- c(LDM.ref.sum,LDM.suit.sum,LDM.refxsuit.sum)
-    #thre.cats.names  <- c("LDM.ref.sum","LDM.suit.sum","LDM.refxsuit.sum")
-    
-    #thre.cats  <- c(SDM.ref.sum,SDM.suit.sum,SDM.refxsuit.sum)
-    #thre.cats.names  <- c("SDM.ref.sum","SDM.suit.sum","SDM.refxsuit.sum")
-    
-    #thre.cats  <- c(SDM.ref.ave,SDM.suit.ave,SDM.refxsuit.ave)
-    #thre.cats.names  <- c("SDM.ref.ave","SDM.suit.ave","SDM.refxsuit.ave")
-    
-    #thre.cats  <- c(LDM.ref.ave,LDM.suit.ave,LDM.refxsuit.ave)
-    #thre.cats.names  <- c("LDM.ref.ave","LDM.suit.ave","LDM.refxsuit.ave")
-    
-    
-    three.cat.list<- list()
+  three.cat.list<- list()
     for (j in 1:length(names(three.cats))) {
       
       rast1 <- three.cats[[j]]
       
-      plot.one <- ggplot()+
+        plot.one <- ggplot()+
+        geom_sf(data = poly, fill = "grey") +
+        geom_sf(data = usa_crop, fill = "white")+
+        geom_sf(data = canada_crop, fill = "white")+
         tidyterra::geom_spatraster(data =rast1)+
-        ggplot2::geom_sf(data = usa_can_crop, aes(), alpha = 0 )+
-       #geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+        
+        geom_sf(data = usa_crop, alpha =0)+
+        geom_sf(data = canada_crop, alpha =0)+       
         ggplot2::geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.1 ,color = "black", fill = "blue", alpha = 0)+
         ggplot2::geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1. ,color = "black", fill = "red", alpha = 0)+
         ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
@@ -296,7 +312,7 @@ area.bcr
         #scale_fill_gradient(low="red", high="green")+
         ggplot2::theme_bw()+
         ggplot2::ggtitle(three.cats.names[[j]])+
-        ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="white")+ ### DIANA's paper style?
+        ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
         ggplot2::theme(
           plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
         )+
@@ -320,7 +336,7 @@ area.bcr
   
   group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
   
-  ggsave(group_plots.png, filename = "group_plots.5.png", path = "plots/", units = "in", width = 22, height = 20, dpi = 300, bg = "white")
+  ggsave(group_plots.png, filename = "group_plots.v6.png", path = "plots/", units = "in", width = 22, height = 20, dpi = 300, bg = "white")
   
   
   end.time <- Sys.time()
@@ -332,8 +348,8 @@ group_plots.png
 
 
 ##############################################################
-
-### ONE plot only of the set of ref, or suit, or ref x suit
+##############################################################
+### ONE plot only of the set of ref, or suit, or ref x suit FOR TESTING ONLY
 plot.sum<- ggplot()+
   geom_spatraster(data =SDM.ref.sum)+
   #geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
@@ -354,8 +370,149 @@ plot.sum<- ggplot()+
     plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
   )
 
+
+
+
+##############################################################
+##############################################################
+##############################################################
+
+
+# NOT WORKING
+
+
+# PLOT all species within a category in independent sets per group
 ###### for all birds in a category #####
 
+
+#Curent loop runs over all predefined groups
+{begin.time <- Sys.time()
+  
+  all.3.sets<-list()
+  
+  #loop for to run all groups
+  for (k in groupings_labs) {
+    print(paste("Starting", k,"at", begin.time))
+    group_plots<- list()### list of plots for each category (to be saved with ggsave)
+    #for one group
+    
+    group_spp <- get(k)
+    
+    #compile each set of graphs: ref, suit, ref x suit for all spp within a group (either LDM, SDM, or RES)
+    ref.mean.list <- list()
+    suit.mean.list <- list()
+    refxsuit.mean.list <- list()
+    
+    
+    all.spp.plot.names <-  list()
+    
+    #ref.ras1<-NULL
+    #suit.ras1<-NULL
+    #refxsuit.ras1<-NULL
+    
+    for (i in c(group_spp)) {
+      
+      #rasters are sometimes tif or tiff, so the grep() solves it
+      ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
+      names(ref.ras1)<-terra::varnames(ref.ras1)
+      ref.ras1 <- terra::mask(ref.ras1, NA_rast)#mask using NAs from env variables 
+      ref.ras1 <- terra::mask(ref.ras1, AKrast)
+      
+      suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
+      names(suit.ras1) <- terra::varnames(suit.ras1)
+      suit.ras1 <- terra::mask(suit.ras1, NA_rast)#mask using NAs from env variables 
+      suit.ras1 <- terra::mask(suit.ras1, AKrast)
+      
+      refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
+      names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
+      refxsuit.ras1 <- terra::mask(refxsuit.ras1, NA_rast)#mask using NAs from env variables 
+      refxsuit.ras1 <- terra::mask(refxsuit.ras1, AKrast)
+      
+    
+      
+      ref.mean.list[[i]] <- ref.ras1
+      suit.mean.list[[i]] <- suit.ras1
+      refxsuit.mean.list[[i]] <- refxsuit.ras1
+      
+      #all.spp.plot.names[[i]] <- c(paste0(i,".refugia"),paste0(i,".suitability"),paste0(i,".refugia x suit"))
+    
+      }
+    
+#need to calculate area and percent per bird?? I DONT THINK SO
+    #three.cats.vals <- c(area.ref,area.suit, area.refxsuit )
+    
+    #make a vector of the lists of rasters (per grouping category)
+    #three.graphs.all.spp  <- c(ref.mean.list, suit.mean.list, refxsuit.mean.list)
+    
+    
+    for (j in 1:length(names(ref.mean.list))) {
+     
+      a<-ref.mean.list[[j]] 
+      b<-suit.mean.list[[j]] 
+      c<-refxsuit.mean.list[[j]] 
+      
+      setplots<-c("a", "b", "c")
+      
+      one.spp.plot.cat.list<- list() # this will have the 3 plots of each species: a, b, c
+      for (t in setplots) { # do it for each element of the 3 lists (each species) 
+         rast1<-get(t)
+         plot.one <- ggplot()+
+          geom_sf(data = poly, fill = "grey") +
+          geom_sf(data = usa_crop, fill = "white")+
+          geom_sf(data = canada_crop, fill = "white")+
+          tidyterra::geom_spatraster(data =rast1)+
+          geom_sf(data = usa_crop, alpha =0)+
+          geom_sf(data = canada_crop, alpha =0)+       
+          ggplot2::geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+          ggplot2::geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+          ggplot2::coord_sf(xlim=c(terra::ext(rast1)[1], terra::ext(rast1)[2]),
+                            ylim = c(terra::ext(rast1)[3], terra::ext(rast1)[4]),
+                            expand = FALSE)+
+          ggplot2::theme_bw()+
+          ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
+          ggplot2::theme(
+            plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
+          )+
+          ggplot2::ggtitle(names(rast1))
+        print(paste(j,"out of", length(names(ref.mean.list)),"Plotting", k, "species:",names(rast1)))
+         one.spp.plot.cat.list[[t]]<- plot.one
+       }
+      
+    three.plots <- cowplot::plot_grid(plotlist = one.spp.plot.cat.list, nrow = 1, ncol = 3 )
+    #ggsave(three.plots, filename = "SDM.sum.TERR.png", path = "plots/", units = "in", width = 10, height = 3, dpi = 300, bg = "white")
+    
+    group_plots[[j]]<- three.plots
+    } 
+    
+  group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = length(names(ref.mean.list)), ncol = 1 ) # rows set to the whole number of plots for now, may want to figure out how to save in chunks once this works
+  #maybe cow plot by chunks? 
+
+      #graph.rows <-  ceiling(length(list.bird.plots)/3) 
+  
+  ggsave(group_plots.png, filename = paste0(k,"_spp_plots.png"), path = "plots/", units = "in", width = 12, height=  3*length(names(ref.mean.list)), limitsize = FALSE, dpi = 300, bg = "white")
+  
+  all.3.sets [[k]] <- group_plots.png
+   
+  }
+  
+  end.time <- Sys.time()
+  
+  print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
+}
+
+
+#saveRDS(all.3.sets, file = "data/plot.all.spp.3.sets.RDS") # saving freezes, file is about 28GB
+
+
+
+
+
+
+
+
+
+##delete after nov 2oth attempt to automate same output
+##################################### previous code to Nov 20th to plot all spp in 1 category at a time 
 list.bird.plots <- list()
 for (j in 1:length((ref.mean.list))) { #use layer() for a spat Stack raster
   
@@ -389,6 +546,13 @@ list.bird.plots[[length(ref.mean.list)+1]] <- plot.sum
 graph.rows <-  ceiling(length(list.bird.plots)/3) 
 all.plots <- cowplot::plot_grid(plotlist = list.bird.plots, nrow = graph.rows, ncol = 3 )
 ggsave(all.plots, filename = "all.plots.SDM.png", path = "plots/", units = "in", width = 10, height = 3*graph.rows, dpi = 300, bg = "white")
+
+
+
+
+
+
+
 
 #########
 
