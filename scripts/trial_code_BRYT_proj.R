@@ -386,8 +386,15 @@ out_range <-c( "AMRE", 	"BAWW",	"BBWA",	"BHVI",	"CAWA",
                "CCSP",	"CMWA",	"EUST",	"EVGR",	"HOSP",
                "MAWA",	"MOWA",	"OVEN","PAWA",	"PIWO",	
                "RBGR", 	"REVI",	"SWSP",	 "VESP", 	"WIWR",
-               "AMCR")
+               "AMCR", "SOSP", "PHVI", "WTSP")
 out_range_df<-data.frame( spp = out_range, dropped = "out_range")
+
+bad_fit <- c("AMPI", "BEKI", "RUBL")
+bad_fit_df<-data.frame( spp = bad_fit, dropped = "bad_fit")
+
+low_data <- c("WIPT") 
+low_data_df<-data.frame( spp = low_data, dropped = "low_data")
+
 
 bad_qpad<-c("BRBL","GCSP","RECR","TOWA","TOSO")
 bad_qpad_df<-data.frame( spp = bad_qpad, dropped = "bad_qpad")
@@ -402,10 +409,10 @@ no_offsets <- c("VGSW", "MOCH", "MGWA", "CAHU", "BHGR", "CBCH", "NRWS", "PAWR",
                 "PSFL", "RBSA", "RUHU", "STJA", "WEME", "WIFL")
 no_offsets_df <- data.frame( spp = no_offsets, dropped = "no_offsets")
 
-colonial<-"BANS"
+colonial<-c("BANS", "TRES", "CLSW", "BARS")
 colonial_df <- data.frame( spp = colonial, dropped = "colonial")
 
-unknown_drop <- c("AMPI", "BCCH", "BEKI", "BHCO", "BOWA", "LALO", "PHVI", "RUBL", "WETA", "WEWP", "WIPT")
+unknown_drop <- c("BCCH",  "BHCO", "BOWA", "LALO", "WETA")
 unknown_drop_df <- data.frame( spp = unknown_drop, dropped = "unknown_drop")
 
 dropped_spp_df <- rbind(out_range_df,bad_qpad_df,raptors_df,irruptive_df,no_offsets_df,colonial_df,unknown_drop_df)
