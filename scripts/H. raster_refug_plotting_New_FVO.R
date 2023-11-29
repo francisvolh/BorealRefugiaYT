@@ -363,7 +363,7 @@ group_plots.png
 # for GROUPING categories 
 
 #Curent loop runs over all predefined groups
-
+par(mfrow = c(3,2))
 {
   files.vect <-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds/",  full.names = TRUE)
   
@@ -379,10 +379,14 @@ group_plots.png
     
     group_spp <- get(k)
     
-    curr.rast.list <- list()
-    ref.mean.list <- list()
-    suit.mean.list <- list()
-    refxsuit.mean.list <-  list()
+    three.cats <- NULL
+    three.cats.names <- NULL
+    three.cats.vals <- NULL
+    
+    curr.mean.list <- list() # resets for each grouping run - k iteration in the loop
+    ref.mean.list <- list() # resets for each grouping run - k iteration in the loop
+    suit.mean.list <- list() # resets for each grouping run - k iteration in the loop
+    refxsuit.mean.list <-  list()# resets for each grouping run - k iteration in the loop
     
     for (i in c(group_spp)) {
       
@@ -403,7 +407,7 @@ group_plots.png
       
       names(rast1) <- i
       
-   
+      
       #loads the refugia rasters
       #rasters are sometimes tif or tiff, so the grep() solves it
       ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
@@ -428,7 +432,7 @@ group_plots.png
       names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
       names(suit.ras1) <- terra::varnames(suit.ras1)
       
-      curr.rast.list[[i]] <- rast1
+      curr.mean.list[[i]] <- rast1
       ref.mean.list[[i]] <- ref.ras1
       suit.mean.list[[i]] <- suit.ras1
       refxsuit.mean.list[[i]] <- refxsuit.ras1
@@ -439,57 +443,81 @@ group_plots.png
     # for all RES, LDM, SDM did sum
     #for SDM also did average to compare that visually look the same, Diana agrees they are the same
     
-    curr.sum <- terra::app(terra::rast(curr.rast.list), "sum")#/length(ref.mean.list)
+    curr.sum <- terra::app(terra::rast(curr.mean.list), "sum")#/length(ref.mean.list)
+    #plot(curr.sum)
+    #print(sum(terra::values(curr.sum), na.rm = TRUE))
     
-    y <- mask(curr.sum, bcr[1])
+    mean.val <- mean(terra::values(curr.sum), na.rm = TRUE)
+    low.val<- min(terra::values(curr.sum), na.rm = TRUE)
+    zmin <- max(mean.val, 0.001, na.rm = TRUE)
+    zmin <- max(zmin, 0.01, na.rm = TRUE)
+    #zmax <- max(terra::values(curr.sum), na.rm = TRUE)
+    #q99 <- quantile(terra::values(curr.sum), probs=c(0.999), na.rm=TRUE)
     
-    q10<-quantile(terra::values(y), probs=c(0.1), na.rm=TRUE)
-    curr.sum.test <- ifelse(terra::values(y)>=q10, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     
+    
+    # hist(terra::values(curr.sum))
+    #abline(v=zmin, col= "red")
+    
+    curr.sum.y<-NULL
+    curr.sum.y <- mask(curr.sum, bcr[1])
+    
+    #q10<-quantile(terra::values(curr.sum.y), probs=c(0.1), na.rm=TRUE)
+    #print(zmin)
+    
+    #testingplot <- terra::ifel(curr.sum.y >=zmin, 1, NA)
+    #plot(testingplot)
+    #title(paste(k, "current"))
+    curr.sum.test<-NULL
+    curr.sum.test <- ifelse(terra::values(curr.sum.y)>=zmin, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+    #print(sum(curr.sum.test, na.rm = TRUE))
     #curr.sum.val75 <- max(terra::values(y), na.rm = TRUE) - max(terra::values(y), na.rm = TRUE)/4
     #curr.sum.test <- ifelse(curr.sum[]>=curr.sum.val75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
-    
-    
     #modifications to just ad up all cells with a current distribution that is not NA
+    area.curr <- NULL
     area.curr <-sum(curr.sum.test, na.rm = TRUE)
+    
+    #print(paste("value",k,area.curr, format(Sys.time(), "%X") ))
     
     
     ref.sum <- terra::app(terra::rast(ref.mean.list), "sum")#/length(ref.mean.list)
     #assign(paste0(k,"ref.sum"), ref.sum) #rename object according to loop cycle (spp grouping)
-    y <- mask(ref.sum, bcr[1])
-    ref.sum.val75 <- max(terra::values(y), na.rm = TRUE)-max(terra::values(y), na.rm = TRUE)/4
-    ref.sum.test <- ifelse(terra::values(y)>=ref.sum.val75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+    ref.sum.y <- mask(ref.sum, bcr[1])
+    ref.sum.val75 <- max(terra::values(ref.sum.y), na.rm = TRUE)-max(terra::values(ref.sum.y), na.rm = TRUE)/4
+    ref.sum.test <- ifelse(terra::values(ref.sum.y)>=ref.sum.val75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.ref <-sum(ref.sum.test, na.rm = TRUE)
     
     
     suit.sum <- terra::app(terra::rast(suit.mean.list), "sum")#/length(suit.mean.list)
-    y <- mask(suit.sum, bcr[1])
+    suit.sum.y <- mask(suit.sum, bcr[1])
     
     #assign(paste0(k,"suit.sum"), suit.sum)
     
     #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
-    suit.sum.val75 <- max(terra::values(y), na.rm = TRUE)-max(terra::values(y), na.rm = TRUE)/4
-    suit.sum.test <- ifelse(terra::values(y)>=suit.sum.val75, 1, NA)
+    suit.sum.val75 <- max(terra::values(suit.sum.y), na.rm = TRUE)-max(terra::values(suit.sum.y), na.rm = TRUE)/4
+    suit.sum.test <- ifelse(terra::values(suit.sum.y)>=suit.sum.val75, 1, NA)
     area.suit <-sum(suit.sum.test, na.rm = TRUE)
     
     
     
     refxsuit.sum <- terra::app(terra::rast(refxsuit.mean.list), "sum")#/length(refxsuit.mean.list)
     #assign(paste0(k,"refxsuit.sum"), refxsuit.sum)
-    y <- mask(refxsuit.sum, bcr[1])
+    refxsuit.sum.y <- mask(refxsuit.sum, bcr[1])
     #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
-    refxsuit.sum.val75 <- max(terra::values(y), na.rm = TRUE)-max(terra::values(y), na.rm = TRUE)/4
-    refxsuit.test <- ifelse(refxsuit.sum[]>=refxsuit.sum.val75, 1, NA)
+    refxsuit.sum.val75 <- max(terra::values(refxsuit.sum.y), na.rm = TRUE)-max(terra::values(refxsuit.sum.y), na.rm = TRUE)/4
+    refxsuit.test <- ifelse(terra::values(refxsuit.sum.y)>=refxsuit.sum.val75, 1, NA)
     area.refxsuit <-sum(refxsuit.test, na.rm = TRUE)
     
     
-    #make sets of plots of only the 3 categories (ref, suit, ref x suit) per species grouping (res, ldm, sdm)
-    three.cats  <- c(curr.sum, ref.sum, suit.sum, refxsuit.sum) # vector of rasters
-    three.cats.names  <- c(paste0(k,".current.sum"), paste0(k,".refugia.sum"),paste0(k,".suitability.sum"),paste0(k,".refugia x suit.sum")) # vector of names
-    three.cats.vals <- c(area.curr, area.ref, area.suit, area.refxsuit )
     
-    three.cat.list<- list()
-    for (j in 1:length(names(three.cats))) {
+    #make sets of plots of only the 3 categories (ref, suit, ref x suit) per species grouping (res, ldm, sdm)
+    three.cats  <- list(curr.sum, ref.sum, suit.sum, refxsuit.sum) # list of rasters for each group iteration
+    three.cats.names  <- list(paste0(k,".current.sum"), paste0(k,".refugia.sum"),paste0(k,".suitability.sum"),paste0(k,".refugia x suit.sum")) # list of names
+    three.cats.vals <- list(area.curr, area.ref, area.suit, area.refxsuit )
+    
+    three.cat.list<- list() # for the 3 plots of each iteration
+    
+    for (j in 1:length(three.cats)) {
       
       rast1 <- three.cats[[j]]# a raster
       if (j == 1) {
@@ -535,10 +563,10 @@ group_plots.png
             plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
           )+
           ggplot2::ggtitle(three.cats.names[[j]])+
-          ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[j],2)),
+          ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[[j]],2)),
                             x=(-2291000), 
                             y=( 1680000))+
-          ggplot2::annotate("text", label=paste("High val areas rel to BCR", round((three.cats.vals[j]/as.numeric(area.bcr))*100,2), "%"),
+          ggplot2::annotate("text", label=paste("High val areas rel to BCR", round((three.cats.vals[[j]]/as.numeric(area.bcr))*100,2), "%"),
                             x=(-2291000), 
                             y=( 1630000))
         
@@ -567,10 +595,10 @@ group_plots.png
         ggplot2::theme(
           plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
         )+
-        ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[j],2)),
+        ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[[j]],2)),
                           x=(-2291000), 
                           y=( 1680000))+
-        ggplot2::annotate("text", label=paste("High val areas rel to BCR", round((three.cats.vals[j]/as.numeric(area.bcr))*100,2), "%"),
+        ggplot2::annotate("text", label=paste("High val areas rel to BCR", round((three.cats.vals[[j]]/as.numeric(area.bcr))*100,2), "%"),
                           x=(-2291000), 
                           y=( 1630000))
       
@@ -584,7 +612,6 @@ group_plots.png
     print(paste("Grouping three sets plots", format(Sys.time(), "%X") ))
     
     three.plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 4 )
-    #print(three.plots)
     #ggsave(three.plots, filename = "SDM.sum.TERR.png", path = "plots/", units = "in", width = 10, height = 3, dpi = 300, bg = "white")
     
     group_plots[[k]]<- three.plots
@@ -596,14 +623,13 @@ group_plots.png
   
   print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
   
-  ggsave(group_plots.png, filename = "group_plots.v10.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
+  ggsave(group_plots.png, filename = "group_plots.v11.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
   
   
   end.time <- Sys.time()
   
   print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
 }
-
 
 
 
