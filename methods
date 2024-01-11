@@ -1,16 +1,11 @@
-<mxfile host="app.diagrams.net" modified="2024-01-08T21:05:16.778Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" etag="Cl9CUwJ3NmFrr7lVB9k6" version="22.1.17" type="github">
+<mxfile host="app.diagrams.net" modified="2024-01-11T19:46:41.341Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" etag="NcRwVtaU896OKbkgF9cv" version="22.1.17" type="github">
   <diagram name="Page-1" id="VukGdnx8dOhkrEZ3xW4P">
-    <mxGraphModel dx="1434" dy="738" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+    <mxGraphModel dx="574" dy="295" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="pq4Pw07Z6_c5ugYtNYf9-1" value="&lt;b style=&quot;background-color: initial;&quot;&gt;Count data&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;Point counts&lt;/span&gt;&lt;br&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;ARU&lt;/span&gt;&lt;br&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;BBS&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;" parent="1" vertex="1">
           <mxGeometry x="40" y="120" width="90" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="Wv-6gxHIKsocQT29DNzl-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="JLfjxlSowAnAQxQNJzw7-7" target="pq4Pw07Z6_c5ugYtNYf9-7" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="450" y="170" as="sourcePoint" />
-          </mxGeometry>
         </mxCell>
         <mxCell id="JLfjxlSowAnAQxQNJzw7-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="pq4Pw07Z6_c5ugYtNYf9-2" target="JLfjxlSowAnAQxQNJzw7-7" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -24,11 +19,8 @@
             <mxPoint x="170" y="165" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="Wv-6gxHIKsocQT29DNzl-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="460" y="325" as="targetPoint" />
-            <mxPoint x="530" y="165" as="sourcePoint" />
-          </mxGeometry>
+        <mxCell id="JR03O2Jh3ZXoAU1ueC7U-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="pq4Pw07Z6_c5ugYtNYf9-5" target="pq4Pw07Z6_c5ugYtNYf9-7">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="pq4Pw07Z6_c5ugYtNYf9-5" value="Environmental predictors&lt;br&gt;19 Climate variables (ClimateNA Version 7.3)" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="530" y="135" width="170" height="60" as="geometry" />
@@ -66,9 +58,13 @@
         <mxCell id="Wv-6gxHIKsocQT29DNzl-7" value="Current distribution" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="220" y="275" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="Wv-6gxHIKsocQT29DNzl-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="Wv-6gxHIKsocQT29DNzl-8" edge="1">
+        <mxCell id="Wv-6gxHIKsocQT29DNzl-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="Wv-6gxHIKsocQT29DNzl-8" edge="1" target="pq4Pw07Z6_c5ugYtNYf9-8">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="200" y="395" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="210" y="395" />
+              <mxPoint x="210" y="440" />
+            </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="Wv-6gxHIKsocQT29DNzl-8" value="Future distribution" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
@@ -81,10 +77,13 @@
           <mxGeometry x="840" y="180" width="120" height="80" as="geometry" />
         </mxCell>
         <mxCell id="JLfjxlSowAnAQxQNJzw7-6" value="50 Boosted Regression Trees (BRTs): &lt;br&gt;5 bootstrap x 10-fold testing-training" style="text;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="480" y="235" width="210" height="40" as="geometry" />
+          <mxGeometry x="470" y="235" width="210" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="JLfjxlSowAnAQxQNJzw7-7" value="&lt;span style=&quot;font-size:11.0pt;font-family:&amp;quot;Calibri&amp;quot;,sans-serif;&lt;br/&gt;mso-fareast-font-family:Calibri;mso-fareast-theme-font:minor-latin;mso-font-kerning:&lt;br/&gt;0pt;mso-ligatures:none;mso-ansi-language:EN-US;mso-fareast-language:EN-US;&lt;br/&gt;mso-bidi-language:AR-SA&quot;&gt;randomized sampling with spatial thinning to ~10,000&lt;br&gt;records/model iteration&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=middle;" parent="1" vertex="1">
-          <mxGeometry x="320" y="107.5" width="120" height="115" as="geometry" />
+        <mxCell id="JR03O2Jh3ZXoAU1ueC7U-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="JLfjxlSowAnAQxQNJzw7-7" target="pq4Pw07Z6_c5ugYtNYf9-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="JLfjxlSowAnAQxQNJzw7-7" value="&lt;span style=&quot;&quot;&gt;&lt;font style=&quot;font-size: 12px;&quot; face=&quot;Helvetica&quot;&gt;randomized sampling with spatial thinning to ~10,000&lt;br&gt;records/model iteration&lt;/font&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=middle;" parent="1" vertex="1">
+          <mxGeometry x="310" y="124.38" width="110" height="81.25" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
