@@ -10,7 +10,43 @@ list.files("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping re
 #https://www.epa.gov/eco-research/ecoregions-north-america
 #BCR 4.0 and BCR 4.1 are actually from this link, Ecoregions 6.1 and 3.2 that may match NABC BCR
 
+#Plot al bird locations from QPAD in a map
 
+list.files("data/YT Boreal Refugia Drive/QPAD_Output/")
+
+head(x = for_sample_obs)
+
+NA_CEC_Eco_Level2 <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/NA_Terrestrial_Ecoregions_v2_Level_II_Shapefile/NA_Terrestrial_Ecoregions_v2_level2.shp") #### new 2021 version HUGE SHAPEFILE
+#NA_CEC_Eco_Level2 <- sf::st_read(file.choose()) #### try the other download for cec areas, exact same ouput, but differently formated file # not usin the older "2010" version from the drive
+
+
+rast.crs<- terra::crs(terra::rast("data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif")) ## from data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Norm1991/Normal_1991_2020_bFFP.tif
+
+for_sample_obs <- readRDS("data/YT Boreal Refugia Drive/QPAD_Output/ALFL_Data.rds")
+
+for_sample_obs <- unique(for_sample_obs[,c(1,6,7)]) # 63681 PC Locations, avoiding "re sightings"
+
+for_sample_obs <- for_sample_obs[,c(2:3)] # only coordinates in lat lon
+
+# produce a Spatial object
+for_sample_obs<-terra::vect(for_sample_obs, crs = "EPSG:4326") ## CRS is  for lat lon data coming from QPAD
+for_sample_obs <- terra::project(for_sample_obs, rast.crs) 
+
+cec_crop <- sf::st_transform(NA_CEC_Eco_Level2, crs= rast.crs)
+
+cec_crop <- sf::st_crop(cec_crop, terra::ext(for_sample_obs))
+
+samples <-nrow(for_sample._obs)
+observation <-length(unique(for_sample._obs$LocationID))
+
+unique(cec_crop$NameL2_En)
+
+length(name.vect)
+
+
+ggplot()+
+  geom_sf(data = cec_crop, aes(), fill = "white")+
+  geom_spatvector(data = for_sample_obs, size = 0.75, color = "darkgreen")
 
 #load maps
 boreal_cord_AK <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/BorealTaigaCordillera.w.AK/BorealTaigaCordillera.w.AK.shp")
