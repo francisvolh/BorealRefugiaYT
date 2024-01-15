@@ -255,7 +255,7 @@ df.names9  <- as.data.frame(x=bird.names9)
 
 
 #get alpha codes  already extrated from AOS file
-alpha.names <- read.csv(file.choose())
+alpha.names <- read.csv("data/alpha_codes/Alpha_codes_eng (1).csv")
 class(alpha.names)
 alpha.names$X4.LETTER.CODE <-substring(alpha.names$X4.LETTER.CODE, 1,4)
 
@@ -372,7 +372,7 @@ df.all.birds.merged <-merge(df.all.birds.merged, sppFit1991, by.x = "all.birds",
 class_spp <- read.csv("data/SpeciesStatus.csv")
 names(class_spp)
 unique(class_spp$Migration1)
-class_spp <- dplyr::select(class_spp, c("species_code", "Migration1"))
+class_spp <- dplyr::select(class_spp, c("species_code", "Genus","Species", "Migration1"))
 
 names(df.all.birds.merged)
 df.all.birds.merged <-merge(df.all.birds.merged, class_spp, by.x = "all.birds", by.y ="species_code", all.x = TRUE)
@@ -424,7 +424,9 @@ df.all.birds.merged <- merge(df.all.birds.merged, dropped_spp_df, by.x = "all.bi
 
 #write.csv(df.all.birds.merged, "data/df.all.birds.merged.csv", row.names= FALSE)
 
-#df.all.birds.merged <- read.csv( "data/df.all.birds.merged.csv", na.strings = c("", "NA"))
+
+
+#table with scientific names for pub
 
 df.all.birds.merged[ ,c("all.birds", "dropped_spp", "Ref_x_Hab_Suit_Mean" )] %>% 
   filter(is.na(Ref_x_Hab_Suit_Mean)) %>% 
@@ -435,6 +437,30 @@ df.all.birds.merged[ ,c("all.birds", "sppFit1991val", "Ref_x_Hab_Suit_Mean" )] %
   filter(!is.na(Ref_x_Hab_Suit_Mean)) %>% 
   filter(is.na(sppFit1991val)) %>% 
   pull(all.birds)
+
+
+
+#df.all.birds.merged <- read.csv( "data/df.all.birds.merged.csv", na.strings = c("", "NA"))
+
+spp_list_pub<- df.all.birds.merged|>
+  select("all.birds","ENGLISH.NAME", "dropped", "Migra_status"="Migration1")|> ##NEED TO FIX THIS
+  left_join(class_spp, by = join_by(all.birds == species_code))|>
+  left_join(alpha.names, by = join_by(all.birds == X4.LETTER.CODE))|>
+  select("all.birds","ENGLISH.NAME.x", "Migration1", "dropped","Genus","Species", "SCIENTIFIC.NAME", "Migra_status")|>
+  mutate(
+    dropped = case_when(is.na(dropped) ~ "included", .default = as.character(dropped)),
+    Scientific_name = paste(Genus, Species)
+  )|>
+  arrange(dropped)|>
+  filter(!is.na(all.birds))|>
+  mutate(
+    SCIENTIFIC.NAME = case_when(is.na(SCIENTIFIC.NAME) ~ Scientific_name, .default = as.character(SCIENTIFIC.NAME))
+  )|>
+  select("CODE"="all.birds","ENGLISH.NAME" = "ENGLISH.NAME.x", "SCIENTIFIC.NAME","Migra_status", "included_or_dropped" = "dropped")
+  
+#write.csv(spp_list_pub, "data/spp_list_pub.csv", row.names = FALSE)
+
+#spp_list_pub <- read.csv("data/spp_list_pub.csv")
 
 #####
 #look at a the fit BRT stats of one bird
