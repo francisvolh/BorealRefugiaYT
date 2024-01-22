@@ -76,6 +76,7 @@ BCR4.1_USACAN<- NA_CEC_Eco_Level2|>
 BCR4.0_USACAN<- NA_CEC_Eco_Level2|>
    dplyr::filter(NameL2_En == "Boreal Cordillera")
 
+
 #BCR4.1_USACAN<-sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.1_USACAN.shp")
 #BCR4.0_USACAN  <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.0_USACAN.shp")
 canada <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_CAN_shp/gadm36_CAN_1.shp")
@@ -168,6 +169,7 @@ area.bcr<-sf::st_area(BCR4.1_4.0)
 units(area.bcr) <- units::as_units("km2")
 
 bcr <- BCR4.1_4.0[1]
+bcr <- sf::st_as_sf(bcr)
 bcr <- sf::st_transform(bcr, crs =rast.crs) # shapefile of the 2 ecoregions of interest
 
 #area.bcr
@@ -184,7 +186,8 @@ alaska.pas_crs<-alaska.pas|>
   dplyr::filter(IUCNCAT != "VI")|>
   sf::st_transform(rast.crs)|>
   dplyr::select(CEC_NA_ID, PA_NAME, IUCNCAT, STATE_PROV)
-
+#unique(alaska.pas_crs$PA_NAME)
+#length(unique(alaska.pas_crs$PA_NAME))
 
 CPCAD <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/CPCAD extracted/CPCAD_extracted.shp")
 
@@ -200,7 +203,8 @@ CPCAD1 <- CPCAD|>
   dplyr::filter(LOC_E %in% c("Yukon" , "British Columbia", "Northwest Territories")) |>
   sf::st_transform(rast.crs)
 
-
+#unique(CPCAD1$NAME_E)
+#length(unique(CPCAD1$NAME_E))
 
 single_sf <- dplyr::bind_rows(list(alaska.pas_crs, CPCAD1))
 dissolve_sf <- sf::st_union(single_sf)
@@ -297,19 +301,21 @@ leaflet::leaflet()|>
       print(paste("Working", k, "current dist", i,"at", format(Sys.time(), "%X") ))
       #load current distributions RDS
       rast1 <- readRDS(files.vect[grep(i, files.vect)] )
-      rast1<-terra::rast(rast1, crs =  rast.crs)  
-      rast1 <- rast1[[1]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
-      rast1 <-  terra::crop(rast1, NA_rast.crs) #crop to final area
-      rast1 <- terra::mask(rast1, NA_rast.crs)#mask using NAs from env variables 
-      rast1 <- terra::mask(rast1, AKrast) # mask with Alaska mask
-      Max95<-quantile(terra::values(rast1$Mean), 0.95, na.rm=TRUE) #top 95% density of Mean
+      Max95<-quantile(rast1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+      
       rast1 <- rast1 |>
         dplyr::mutate(
           std.mean = Mean/Max95
-        )|>
-       dplyr::select(std.mean) # only keep the standardized layer
+        )
+      
+      rast1<-terra::rast(rast1, crs =  rast.crs)  
+     
+       rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
+     
+
+
       rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
-      terra::crs(rast1) <- rast.crs # assign a crs to avoid warning
+      #terra::crs(rast1) <- rast.crs # assign a crs to avoid warning
       curr.mean.list[[i]] <- rast1
       rm(rast1)
       
@@ -348,9 +354,12 @@ leaflet::leaflet()|>
     
     curr.sum <- terra::app(terra::rast(curr.mean.list), "sum")#/length(ref.mean.list)
     terra::crs(curr.sum) <- rast.crs
-    curr.sum.y <- terra::mask(curr.sum, NA_rast.crs)
-    curr.sum.y <- terra::mask(curr.sum.y, AKrast)
-    curr.sum.y <- terra::mask(curr.sum.y, bcr[1])
+    
+    curr.sum <- terra::crop(curr.sum, NA_rast.crs)
+    curr.sum <- terra::mask(curr.sum, NA_rast.crs)
+    
+    curr.sum <- terra::mask(curr.sum, AKrast)
+    curr.sum.y <- terra::mask(curr.sum, bcr[1])
     
     # quantile may always be selecting the same number of cells???????
     #q75 <- quantile(terra::values(curr.sum.y), probs=c(0.75), na.rm=TRUE)
@@ -371,6 +380,7 @@ leaflet::leaflet()|>
     #stack cropped to PAs only
     cropped_rast_yt <- terra::mask(curr.sum.y, yukon_PAs_crs)
     
+    #use the same p75 of the overall ecoregion to calculate this high qual area
     area.cropped_rast_ytSDM <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.cropped_rast_ytSDM <-sum(terra::values(area.cropped_rast_ytSDM), na.rm = TRUE)
     
@@ -539,6 +549,7 @@ for_calc <- cropped_rast_yt # grab the last raster produced of a stack for only 
 for_calc <- terra::ifel(for_calc >0, 1, NA)
 #plot(for_calc)
 area.for_calc<-sum(terra::values(for_calc), na.rm = TRUE) # exclude the NAs for models and Alaska
+
 df2<-as.data.frame(pa_group_area_values)
 df2$Category <- groupings_labs
 
@@ -547,14 +558,29 @@ names(df2) <- c( "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit", "Category
 high.pa.area <- df2[, c( "Category", "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit")]
 
 high.pa.area$Pres.Percent <- high.pa.area$Present/ as.numeric(area.for_calc)*100
-high.pa.area$Ref.Percent <- high.pa.area$Refugia/ as.numeric(area.for_calc)*100
-high.pa.area$Fut.Suitable.Perc <- high.pa.area$Fut.Suitable/ as.numeric(area.for_calc)*100
+#high.pa.area$Ref.Percent <- high.pa.area$Refugia/ as.numeric(area.for_calc)*100
+#high.pa.area$Fut.Suitable.Perc <- high.pa.area$Fut.Suitable/ as.numeric(area.for_calc)*100
 high.pa.area$RefxFut.Perc <- high.pa.area$RefxFut.Suit/ as.numeric(area.for_calc)*100
+
+
+
+high.pa.area$Pres.Percent <- high.pa.area$Present/ as.numeric(area.for_calc)*100
+high.pa.area$Pres.Percent_ECO <- high.pa.area$Present/ as.numeric(area.bcr_for_calc)*100
+high.pa.area$Pres.Dif_Percent_PAECO <- (high.pa.area$Present-high.areas$Present)/ high.areas$Present*100
+
+#high.pa.area$Ref.Percent <- high.pa.area$Refugia/ as.numeric(area.for_calc)*100
+#high.pa.area$Fut.Suitable.Perc <- high.pa.area$Fut.Suitable/ as.numeric(area.for_calc)*100
+
+high.pa.area$RefxFut.Perc <- high.pa.area$RefxFut.Suit/ as.numeric(area.for_calc)*100
+high.pa.area$RefxFut.Perc_ECO <- high.pa.area$RefxFut.Suit/ as.numeric(area.bcr_for_calc)*100
+
+high.pa.area$RefxFut.Suit.Dif_Percent_PAECO <- (high.pa.area$RefxFut.Suit-high.areas$RefxFut.Suit)/ high.areas$RefxFut.Suit*100
+
+
 high.pa.area
 print(high.areas)
 high.pa.area
 #write.csv(high.pa.area, "data/high.pa.area.csv")
-
 
 }
 
@@ -566,11 +592,11 @@ high.pa.area
   
 { begin.time <- Sys.time()
     
-  rast.cat.names<- c("current.sum","refugia.sum",".future.sum",".refugia x future.sum")
+  rast.cat.names<- c("current.sum","refugia.sum","future.sum","refugia x future.sum")
     group_plots<- NULL # list, will hold the  3 cowplots (of 4 plots) per migratory iteration, for plotting and saving at the end
     
     three.cat.list<- NULL # for the 3 plots of each iteration
-    groupings_labs
+    #groupings_labs
 for (m in 1:length(all.group.rasters)) {
   
   three.cats <- all.group.rasters[[m]]
@@ -633,15 +659,15 @@ for (m in 1:length(all.group.rasters)) {
       print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
       
     }
-    else{plot.one <- ggplot()+
-      geom_sf(data = poly, fill = "grey") +
-      geom_sf(data = usa_crop, fill = "white")+
-      geom_sf(data = canada_crop, fill = "white")+
+    else{plot.one <- ggplot2::ggplot()+
+      ggplot2::geom_sf(data = poly, fill = "grey") +
+      ggplot2::geom_sf(data = usa_crop, fill = "white")+
+      ggplot2::geom_sf(data = canada_crop, fill = "white")+
       tidyterra::geom_spatraster(data =sum.raster)+
-      geom_sf(data = usa_crop, alpha =0)+
-      geom_sf(data = canada_crop, alpha =0)+       
-      ggplot2::geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.1 ,color = "black", fill = "blue", alpha = 0)+
-      ggplot2::geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1. ,color = "black", fill = "red", alpha = 0)+
+      ggplot2::geom_sf(data = usa_crop, alpha =0)+
+      ggplot2:: geom_sf(data = canada_crop, alpha =0)+       
+      ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", fill = "blue", alpha = 0)+
+      ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1. ,color = "black", fill = "red", alpha = 0)+
       ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
                         ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
                         expand = FALSE)+
@@ -654,7 +680,7 @@ for (m in 1:length(all.group.rasters)) {
       ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))+#+
       ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
       ggplot2::theme(
-        plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
+        plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
       )#+
     #ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[[j]],2)),
     #                 x=(-2291000), 
@@ -673,6 +699,9 @@ for (m in 1:length(all.group.rasters)) {
   
   #cowplot object with 4 maps of each migra group iteration 
   
+  one_group_4plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 4 )
+  ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plot",groupings_labs[m], ".png") ,
+                  path = "plots/", units = "in", width = 30, height = 6.5, dpi = 300, bg = "white")
   
   group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 4 )
   #rm(three.plots)
@@ -688,7 +717,7 @@ for (m in 1:length(all.group.rasters)) {
   print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
   
   
-  #ggsave(group_plots.png, filename = "group_plots.v13TRIALS.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
+  ggsave(group_plots.png, filename = "group_plots.v14.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
   end.time <- Sys.time()
   print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
   
@@ -698,7 +727,6 @@ for (m in 1:length(all.group.rasters)) {
 
 ########################################################################
 ########################################################################
-# trying to incorporate percent cover overlap of Protected areas
 
 
 
@@ -714,16 +742,11 @@ yukon_PAs_crs<-yukon_PAs|>
 
 (all.group.rasters[[1]])[[1]]
 
-plot((all.group.rasters[[1]])[[2]])
+terra::plot((all.group.rasters[[1]])[[4]])
 #get 1 raster and mask out with the yukon only
-yukon <- canada_crop|>
-   dplyr::filter(NAME_1 == "Yukon")|>
-  sf::st_transform(rast.crs)
-
-plot(yukon[1])
 
 ggplot()+
-  geom_spatraster(data = (all.group.rasters[[1]])[[2]] )+
+  geom_spatraster(data = (all.group.rasters[[1]])[[4]] )+
   geom_sf(data =yukon, color = "black", alpha = 0)+
   geom_sf(data =yukon_PAs_crs, color = "black", alpha = 0)
 
