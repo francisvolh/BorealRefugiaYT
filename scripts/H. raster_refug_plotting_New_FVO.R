@@ -607,7 +607,7 @@ for (m in 1:length(all.group.rasters)) {
     
     sum.raster <- three.cats[[j]]# a raster
     
-    if (j == 1) {
+   # if (j == 1) {
       
       # truncate values for better viz FOR NOW DECIDED NOT TO DO IT WITH THE STACKS
       #mean.val <- mean(terra::values(rast1), na.rm = TRUE)
@@ -626,12 +626,14 @@ for (m in 1:length(all.group.rasters)) {
         ggplot2::geom_sf(data = canada_crop, alpha =0)+       
         ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
         ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-        ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
-                          ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
+        ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
+                          ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
                           expand = FALSE)+
         ggplot2::theme_bw()+
-        ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style is turbo, viridis alone is for green colours?
-        
+        ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+        ggplot2::theme(
+          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+        )+
         #the following lines would be for a color scale of bird densities to truncate very low or very high abundances 
         #ggplot2::scale_fill_gradientn(
         #colors = c(
@@ -658,30 +660,31 @@ for (m in 1:length(all.group.rasters)) {
       
       print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
       
-    }
-    else{plot.one <- ggplot2::ggplot()+
-      ggplot2::geom_sf(data = poly, fill = "grey") +
-      ggplot2::geom_sf(data = usa_crop, fill = "white")+
-      ggplot2::geom_sf(data = canada_crop, fill = "white")+
-      tidyterra::geom_spatraster(data =sum.raster)+
-      ggplot2::geom_sf(data = usa_crop, alpha =0)+
-      ggplot2:: geom_sf(data = canada_crop, alpha =0)+       
-      ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", fill = "blue", alpha = 0)+
-      ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1. ,color = "black", fill = "red", alpha = 0)+
-      ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                        ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                        expand = FALSE)+
+  
+#  }
+   # else{plot.one <- ggplot2::ggplot()+
+    #  ggplot2::geom_sf(data = poly, fill = "grey") +
+     # ggplot2::geom_sf(data = usa_crop, fill = "white")+
+      #ggplot2::geom_sf(data = canada_crop, fill = "white")+
+      #tidyterra::geom_spatraster(data =sum.raster)+
+      #ggplot2::geom_sf(data = usa_crop, alpha =0)+
+      #ggplot2:: geom_sf(data = canada_crop, alpha =0)+       
+      #ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", fill = "blue", alpha = 0)+
+      #ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1. ,color = "black", fill = "red", alpha = 0)+
+      #ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
+       #                 ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
+        #                expand = FALSE)+
       #scale_fill_terrain_c()+ ###WORKS! may be best because of white color on zeros,   na.value = NA not doing anything in this 
       #scale_fill_distiller()+
       #scale_fill_binned(type = "viridis")
       #scale_fill_continuous(type = "viridis")+
       #scale_fill_gradient(low="red", high="green")+
-      ggplot2::theme_bw()+
-      ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))+#+
-      ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
-      ggplot2::theme(
-        plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-      )#+
+      #ggplot2::theme_bw()+
+      #ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))+#+
+      #ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
+      #ggplot2::theme(
+       # plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+      #)#+
     #ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[[j]],2)),
     #                 x=(-2291000), 
     #                y=( 1680000))+
@@ -689,9 +692,10 @@ for (m in 1:length(all.group.rasters)) {
     #                 x=(-2291000), 
     #                y=( 1630000))
     
-    print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
     
-    }
+      #print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
+    
+#    }
     three.cat.list[[j]] <- plot.one # lists the four plots per category
     
   }
@@ -717,7 +721,7 @@ for (m in 1:length(all.group.rasters)) {
   print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
   
   
-  ggsave(group_plots.png, filename = "group_plots.v14.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
+  ggplot2::ggsave(group_plots.png, filename = "group_plots.v14.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
   end.time <- Sys.time()
   print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
   
