@@ -2,62 +2,65 @@ library(dplyr)
 library(sf)
 library(ggplot2)
 
-###############################################
-### 1 i) Mapping of points and Ecoregions ---  of 1 spp 
-###############################################
+################################################################################
+################################################################################
+### 1 i) Mapping of subsample points and Provinces or Ecoregions ---  of 1 spp 
+################################################################################
+################################################################################
 
 ### run the required preliminary code for script H 
 
 
-BOCH_full <- read.csv(("data/YT Boreal Refugia Drive/YK Refugia Code and material/subsamples for plots/BOCH_full.csv"))
-BOCH_test <-  read.csv("data/YT Boreal Refugia Drive/YK Refugia Code and material/subsamples for plots/BOCH_testSample.csv")
-BOCH_train <-  read.csv("data/YT Boreal Refugia Drive/YK Refugia Code and material/subsamples for plots/BOCH_trainingSample.csv")
+BOCH_full <- read.csv("data/YT Boreal Refugia Drive/BOCH_methods_example/BOCH_fullData.csv")
+BOCH_fullSetAs <-  read.csv("data/YT Boreal Refugia Drive/BOCH_methods_example/BOCH_fullsetaside.csv")
+BOCH_train <-  read.csv("data/YT Boreal Refugia Drive/BOCH_methods_example/BOCH_Training.csv")
 
-xy_frame <- unique(BOCH_full[,c(2,10,11)])# 63681 PC Locations, avoiding "re sightings"
+xy_frame <- unique(BOCH_full[,c(2,4,5,6,7)])# 63681 PC Locations, avoiding "re sightings"
 
 
-xy <- xy_frame[,c(2:3)]
+xy <- xy_frame[,c(3:4)]
 xy<-dplyr::filter(xy, !is.na(lat))
 xy_sf <- sf::st_as_sf(xy, coords = c("lon", "lat")) 
 sf::st_crs(xy_sf) <- "EPSG:4326"
 xy_sf_base <- xy_sf
-xy_sf <- sf::st_transform(xy_sf, rast.crs )
+xy_sf <- sf::st_transform(xy_sf, rast.crs ) ### FULL BOCH 
 
 xy_frame2 <- BOCH_full|>
-  mutate(
-    P_A = case_when( count > 0 ~ "presence", .default = "absence")
+  dplyr::mutate(
+    P_A = dplyr::case_when( count > 0 ~ "presence", .default = "absence")
   )
+
 xy2 <- xy_frame2[,c("lon","lat", "P_A")]
 xy2 <- unique(xy2[,c("lon","lat", "P_A")])
 xy2<-dplyr::filter(xy2, !is.na(lat))
 xy_sf2 <- sf::st_as_sf(xy2, coords = c("lon", "lat")) 
 sf::st_crs(xy_sf2) <- "EPSG:4326"
-xy_sf2 <- sf::st_transform(xy_sf2, rast.crs )
+xy_sf2 <- sf::st_transform(xy_sf2, rast.crs ) ### FULL PRESENCE ABSENCE CATEGORIZED
 
-xy_frame_test <- unique(BOCH_test[,c(2,10,11)]) # 63681 PC Locations, avoiding "re sightings"
-xy_test <- xy_frame_test[,c(2:3)]
-xy_test<-dplyr::filter(xy_test, !is.na(lat))
-xy_sf_test <- sf::st_as_sf(xy_test, coords = c("lon", "lat")) 
-sf::st_crs(xy_sf_test) <- "EPSG:4326"
-xy_sf_test<- sf::st_transform(xy_sf_test, rast.crs )
+#xy_frame_test <- unique(BOCH_test[,c(2,10,11)]) # 63681 PC Locations, avoiding "re sightings"
+#xy_test <- xy_frame_test[,c(2:3)]
+#xy_test<-dplyr::filter(xy_test, !is.na(lat))
+#xy_sf_test <- sf::st_as_sf(xy_test, coords = c("lon", "lat")) 
+#sf::st_crs(xy_sf_test) <- "EPSG:4326"
+#xy_sf_test<- sf::st_transform(xy_sf_test, rast.crs )
 
-xy_frame_train <- unique(BOCH_train[,c(2,10,11)]) # 63681 PC Locations, avoiding "re sightings"
-xy_train <- xy_frame_train[,c(2:3)]
+xy_frame_train <- unique(BOCH_train[,c(2,4,5,6,8)]) # 63681 PC Locations, avoiding "re sightings"
+xy_train <- xy_frame_train[,c(3:4)]
 xy_train<-dplyr::filter(xy_train, !is.na(lat))
 xy_sf_train <- sf::st_as_sf(xy_train, coords = c("lon", "lat")) 
 sf::st_crs(xy_sf_train) <- "EPSG:4326"
-xy_sf_train<- sf::st_transform(xy_sf_train, rast.crs )
+xy_sf_train<- sf::st_transform(xy_sf_train, rast.crs ) ### Training all dataset BOCH
 
 xy_frame3 <- BOCH_train|>
-  mutate(
-    P_A = case_when( count > 0 ~ "presence", .default = "absence")
+  dplyr::mutate(
+    P_A = dplyr::case_when( count > 0 ~ "presence", .default = "absence")
   )
 xy3 <- xy_frame3[,c("lon","lat", "P_A")]
 xy3 <- unique(xy3[,c("lon","lat", "P_A")])
 xy3<-dplyr::filter(xy3, !is.na(lat))
 xy_sf3 <- sf::st_as_sf(xy3, coords = c("lon", "lat")) 
 sf::st_crs(xy_sf3) <- "EPSG:4326"
-xy_sf3 <- sf::st_transform(xy_sf3, rast.crs )
+xy_sf3 <- sf::st_transform(xy_sf3, rast.crs ) ### TRAINING PRESENCE ABSENCE CATEGORIZED
 
 canada_test<- sf::st_transform(canada, rast.crs)
 
@@ -74,8 +77,100 @@ USA_test <- sf::st_crop(USA_test, c(xmin=as.numeric(terra::ext(xy_sf)[1]),
                               ymax=as.numeric(terra::ext(xy_sf)[4])))
 
 #provincial limits version
+
+
+cec_crop <-  sf::st_crop(NA_CEC_Eco_Level2, c(xmin=as.numeric(terra::ext(xy_sf)[1]), 
+                                          xmax=as.numeric(terra::ext(xy_sf)[2]), 
+                                          ymin=as.numeric(terra::ext(xy_sf)[3]), 
+                                          ymax=as.numeric(terra::ext(xy_sf)[4])))
+
+
+
+
+########################
+#CEC ecoregions version
+########################
+
+# filled
+
 #all points, in black (could be split into the 3 subsets overplotted as well)
-A <- ggplot() +
+A <- ggplot2::ggplot() +
+  ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En), color = NA,  alpha=0.25)+
+  ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
+  ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
+  
+  #ggplot2::geom_sf(data = poly, fill = "grey") +
+  #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
+  #ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
+  #geom_sf(data = nwt.pas, fill = "pink" )+
+  #geom_sf(data = yukon_PAs_crs, fill = "lightgreen" )+
+  #geom_sf(data = alaska.pas_crs,fill = "lightblue" )+
+  #ggplot2::geom_sf(data = usa_crop, alpha =0)+
+  #ggplot2::geom_sf(data = canada_crop, alpha =0)+
+  #ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+  #ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+ggplot2::theme_bw()+
+  ggplot2::geom_sf(data=xy_sf, size=0.01, colour="black", alpha=0.05) +
+  #ggplot2::geom_sf(data=xy_sf_train, size=0.0001,colour="blue")+
+  #ggplot2::geom_sf(data=xy_sf_test, size=0.0001,colour="red")+
+  ggplot2::coord_sf(expand = FALSE)+ 
+  ggplot2::guides(color = ggplot2::guide_legend(title = "CEC level 2 Ecoregions")) +
+  ggplot2::ggtitle("Full dataset")
+
+
+#training data, presence-absence
+C <- ggplot2::ggplot() +
+  ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En), color = NA, alpha=0.25)+
+  ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
+  ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
+  #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
+  #ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
+  ggplot2::theme_bw()+
+  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "absence"),], ggplot2::aes(color ="#F8766D"), size=0.1, alpha=0.1)+
+  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "presence"),], ggplot2::aes(color="blue"), size=0.1)+
+  ggplot2::scale_colour_manual(name = 'Observations', 
+                               values =c('blue'='blue', "#F8766D"="#F8766D"), labels = c(  'absence', 'presence'))+
+  ggplot2::coord_sf(expand = FALSE)+
+  ggplot2::guides(fill = "none",
+                  colour = ggplot2::guide_legend(override.aes = list(size=2.5)))+
+  ggplot2::ggtitle("Full dataset: presence/absence")
+
+#training data, presence-absence
+D <- ggplot2::ggplot() +
+  ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En),  color = NA, alpha=0.25)+
+  ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
+  ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
+  #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
+  #ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
+  ggplot2::theme_bw()+
+  ggplot2::geom_sf(data=xy_sf3[which(xy_sf3$P_A == "absence"),], ggplot2::aes(color ="#F8766D"), size=0.1, alpha=0.1)+
+  ggplot2::geom_sf(data=xy_sf3[which(xy_sf3$P_A == "presence"),], ggplot2::aes(color="blue"), size=0.1)+
+  #ggplot2::geom_sf(data=xy_sf_test, size=0.0001, aes(color="black"))+
+  ggplot2::scale_colour_manual(name = 'Observations', 
+                               values =c('blue'='blue', '#F8766D'='#F8766D'#,'black' = 'black'
+                               ),
+                               labels = c( 'absence', 'presence'#, 'testing data'
+                               ))+
+  ggplot2::coord_sf(expand = FALSE)+
+  ggplot2::guides(fill = "none",
+                  color = ggplot2::guide_legend(override.aes = list(size=2.5)))+
+  ggplot2::ggtitle("Training dataset: presence/absence")
+
+
+subsamples_plots3 <- cowplot::plot_grid(A, #C, 
+                                        D, labels = c("A", #"B",
+                                                      "C"), rel_widths = c(2,1.75, 1.75),  nrow = 1 )
+
+#subsamples_plots3
+#ggplot2::ggsave(subsamples_plots3, filename = "subsamples_plotsOPTION1v2.png", path = "plots/", units = "in", width = 20, height = 9, dpi = 300, bg = "white")
+
+
+################################################
+# Provincial boundary   version
+################################################
+
+#all points, in black (could be split into the 3 subsets overplotted as well)
+A <- ggplot2::ggplot() +
   #ggplot2::geom_sf(data = poly, fill = "grey") +
   ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
   ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
@@ -87,115 +182,59 @@ A <- ggplot() +
   #ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
   #ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
   ggplot2::theme_bw()+
-  ggplot2::geom_sf(data=xy_sf, size=0.0001, colour="black", alpha=0.05) +
+  ggplot2::geom_sf(data=xy_sf, size=0.01, colour="black", alpha=0.05) +
   #ggplot2::geom_sf(data=xy_sf_train, size=0.0001,colour="blue")+
   #ggplot2::geom_sf(data=xy_sf_test, size=0.0001,colour="red")+
-  ggplot2::coord_sf(expand = FALSE)
+  ggplot2::coord_sf(expand = FALSE)+
+  ggplot2::ggtitle("Full dataset")
 
 
 #all points presence-absence
-B <- ggplot() +
+B <- ggplot2::ggplot() +
   ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
   ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
   ggplot2::theme_bw()+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "absence"),], aes(color ="#F8766D"), size=0.1, alpha=0.05)+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "presence"),], aes(color="#619CFF"), size=0.1,  alpha=0.05)+
+  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "absence"),], ggplot2::aes(color ="#F8766D"), size=0.1, alpha=0.1)+
+  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "presence"),], ggplot2::aes(color="blue"), size=0.1)+
   ggplot2::scale_colour_manual(name = 'Observations', 
-                               values =c('#619CFF'='#619CFF', "#F8766D"="#F8766D"), labels = c( 'presence', 'absence'))+
+                               values =c('blue'='blue', "#F8766D"="#F8766D"), labels = c( 'absence', 'presence'))+
   ggplot2::coord_sf(expand = FALSE)+
-  ggplot2::guides(colour = guide_legend(override.aes = list(size=2.5)))
+  ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size=2.5)))+
+  ggplot2::ggtitle("Full dataset: presence/absence")
 
 #training data, presence-absence
-C <- ggplot() +
+C <- ggplot2::ggplot() +
   ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
   ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
   ggplot2::theme_bw()+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "absence"),], aes(color ="#F8766D"), size=0.1)+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "presence"),], aes(color="#619CFF"), size=0.1)+
+  ggplot2::geom_sf(data=xy_sf3[which(xy_sf3$P_A == "absence"),], ggplot2::aes(color ="#F8766D"), size=0.1,  alpha = 0.1)+
+  ggplot2::geom_sf(data=xy_sf3[which(xy_sf3$P_A == "presence"),], ggplot2::aes(color="blue"), size=0.1)+
   ggplot2::scale_colour_manual(name = 'Observations', 
-                               values =c('#619CFF'='#619CFF', "#F8766D"="#F8766D"), labels = c( 'presence', 'absence'))+
+                               values =c('blue'='blue', "#F8766D"="#F8766D"), labels = c( 'absence','presence'))+
   ggplot2::coord_sf(expand = FALSE)+
-  ggplot2::guides(colour = guide_legend(override.aes = list(size=2.5)))
-#training data, presence-absence
-D <- ggplot() +
-  ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
-  ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
-  ggplot2::theme_bw()+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "absence"),], aes(color ="#F8766D"), size=0.1)+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "presence"),], aes(color="#619CFF"), size=0.1)+
-  ggplot2::geom_sf(data=xy_sf_test, size=0.0001, aes(color="black"))+
-  ggplot2::scale_colour_manual(name = 'Observations', 
-                               values =c('#619CFF'='#619CFF', '#F8766D'='#F8766D','black' = 'black'),
-                               labels = c( 'presence', 'absence', 'testing data'))+
-  ggplot2::coord_sf(expand = FALSE)+
-  ggplot2::guides(color = guide_legend(override.aes = list(size=2.5)))
-
-subsamples_plots <- cowplot::plot_grid(A, B, C, labels = c("A", "B", "C"), rel_widths = c(1.75, 2, 2),  nrow = 1 )
-#ggsave(subsamples_plots, filename = "subsamples_plots.png", path = "plots/", units = "in", width = 30, height = 9, dpi = 300, bg = "white")
-
-subsamples_plots2 <- cowplot::plot_grid(A, C, D, labels = c("A", "B", "C"), rel_widths = c(1.75, 2, 2),  nrow = 1 )
-#ggsave(subsamples_plots2, filename = "subsamples_plotsOPTION2.png", path = "plots/", units = "in", width = 30, height = 9, dpi = 300, bg = "white")
-
-#CEC ecoregions version
-# filled
-#all points, in black (could be split into the 3 subsets overplotted as well)
-A <- ggplot() +
-  geom_sf(data = cec_crop, aes(fill = NameL2_En), alpha=0.25)+
-  #ggplot2::geom_sf(data = poly, fill = "grey") +
-  #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
-  #ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
-  #geom_sf(data = nwt.pas, fill = "pink" )+
-  #geom_sf(data = yukon_PAs_crs, fill = "lightgreen" )+
-  #geom_sf(data = alaska.pas_crs,fill = "lightblue" )+
-  #ggplot2::geom_sf(data = usa_crop, alpha =0)+
-  #ggplot2::geom_sf(data = canada_crop, alpha =0)+
-  #ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-  #ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-  ggplot2::theme_bw()+
-  ggplot2::geom_sf(data=xy_sf, size=0.0001, colour="black", alpha=0.05) +
-  #ggplot2::geom_sf(data=xy_sf_train, size=0.0001,colour="blue")+
-  #ggplot2::geom_sf(data=xy_sf_test, size=0.0001,colour="red")+
-  ggplot2::coord_sf(expand = FALSE)
+  ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size=2.5)))+
+  ggplot2::ggtitle("Training dataset: presence/absence")
 
 
-#training data, presence-absence
-C <- ggplot() +
-  geom_sf(data = cec_crop, aes(fill = NameL2_En), alpha=0.25)+
-  #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
-  #ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
-  ggplot2::theme_bw()+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "absence"),], aes(color ="#F8766D"), size=0.1)+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "presence"),], aes(color="#619CFF"), size=0.1)+
-  ggplot2::scale_colour_manual(name = 'Observations', 
-                               values =c('#619CFF'='#619CFF', "#F8766D"="#F8766D"), labels = c( 'presence', 'absence'))+
-  ggplot2::coord_sf(expand = FALSE)+
-  ggplot2::guides(fill = "none",
-                  colour = guide_legend(override.aes = list(size=2.5)))
-
-#training data, presence-absence
-D <- ggplot() +
-  geom_sf(data = cec_crop, aes(fill = NameL2_En), alpha=0.25)+
-  #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
-  #ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
-  ggplot2::theme_bw()+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "absence"),], aes(color ="#F8766D"), size=0.1)+
-  ggplot2::geom_sf(data=xy_sf2[which(xy_sf2$P_A == "presence"),], aes(color="#619CFF"), size=0.1)+
-  ggplot2::geom_sf(data=xy_sf_test, size=0.0001, aes(color="black"))+
-  ggplot2::scale_colour_manual(name = 'Observations', 
-                               values =c('#619CFF'='#619CFF', '#F8766D'='#F8766D','black' = 'black'),
-                               labels = c( 'presence', 'absence', 'testing data'))+
-  ggplot2::coord_sf(expand = FALSE)+
-  ggplot2::guides(fill = "none",
-                  color = guide_legend(override.aes = list(size=2.5)))
 
 
-subsamples_plots3 <- cowplot::plot_grid(A, C, D, labels = c("A", "B", "C"), rel_widths = c(2.1,1.75, 1.75),  nrow = 1 )
 
-subsamples_plots3
-#ggsave(subsamples_plots3, filename = "subsamples_plotsOPTION3.png", path = "plots/", units = "in", width = 30, height = 9, dpi = 300, bg = "white")
+subsamples_plots <- cowplot::plot_grid(A, B, C, labels = c("A", #"B", 
+                                                           "C"), 
+                                       rel_widths = c(1.75, 2, 2),  
+                                       nrow = 1 )
 
+#ggplot2::ggsave(subsamples_plots, filename = "subsamples_plotsv2A.png", path = "plots/", units = "in", width = 20, height = 9, dpi = 300, bg = "white")
+
+#subsamples_plots2 <- cowplot::plot_grid(A, C, D, labels = c("A", "B", "C"), rel_widths = c(1.75, 2, 2),  nrow = 1 )
+#ggsave(subsamples_plots2, filename = "subsamples_plotsOPTION3.png", path = "plots/", units = "in", width = 30, height = 9, dpi = 300, bg = "white")
+
+
+
+
+############## NOT USED
 ###############################################
-### 1 ii) Mapping of points and Ecoregions --- of all spp
+### 1 ii) Mapping of points and Provinces and/or Ecoregions --- of all spp
 ###############################################
 #get location from QPAD bird abundance estimations
 KEY<-readRDS("data/YT Boreal Refugia Drive/QPAD_Output/ALFL_Data.rds") #Should be 202712 records
@@ -280,7 +319,7 @@ ggplot()+
 dissolve_sf
 
 
-ggplot2::ggplot()+
+model_PAs_ecoregs <- ggplot2::ggplot()+
   ggplot2::geom_sf(data = poly, fill = "grey") +
   ggplot2::geom_sf(data = usa_crop, fill = "white")+
   ggplot2::geom_sf(data = canada_crop, fill = "white")+
@@ -297,7 +336,8 @@ ggplot2::ggplot()+
                     expand = FALSE)+
   ggplot2::theme_bw()
 
-
+model_PAs_ecoregs
+#ggplot2::ggsave(model_PAs_ecoregs, filename = "model_PAs_ecoregs.png", path = "plots/", units = "in", width = 7.5, height = 7, dpi = 300, bg = "white")
 
 #map a sample stack or the three RES, LDM, SDM for Ref x Suit
 
@@ -338,7 +378,7 @@ for (n in 1:length(refxsuit3rasts)) {
   sample_plot_list[[n]]<-plot1
 }
 sample_plot_PAs_refxsuit <- cowplot::plot_grid(plotlist = sample_plot_list, ncol = 3)
-ggplot2::ggsave(sample_plot_PAs_refxsuit, filename = "sample_plot_PAs_refxsuitver1.png", path = "plots/", units = "in", width = 22.5, height = 7, dpi = 300, bg = "white")
+#ggplot2::ggsave(sample_plot_PAs_refxsuit, filename = "sample_plot_PAs_refxsuitver1.png", path = "plots/", units = "in", width = 22.5, height = 7, dpi = 300, bg = "white")
 
 
 #VERSION 2
@@ -374,6 +414,11 @@ sample_plot_PAs_refxsuit2 <- cowplot::plot_grid(plotlist = sample_plot_list2, nc
 ggplot2::ggsave(sample_plot_PAs_refxsuit2, filename = "sample_plot_PAs_refxsuitver2.png", path = "plots/", units = "in", width = 22.5, height = 7, dpi = 300, bg = "white")
 
 
+
+
+
+#################
+#################
 #################
 ### 3) topo map -- attempts
 #################
