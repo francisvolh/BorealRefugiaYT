@@ -364,11 +364,6 @@ sppFit1991$sppFit1991val <- "sppFit1991"
 
 df.all.birds.merged <-merge(df.all.birds.merged, sppFit1991, by.x = "all.birds", by.y ="sppFit1991", all.x = TRUE)
 
-
-
-
-
-
 ####
 #classification for groupings
 class_spp <- read.csv("data/SpeciesStatus.csv")
@@ -682,3 +677,52 @@ head(test1)
 
 #Rasters_1991_Normal_Refugia and Habitat Suitability - tif files, individually for Refugia, Suit, and SuitxRef
 
+######
+
+#Code for ggplots densities forcing the scale ESPECIALLY FOR THE RAW (or capped but not std) DENSITIES
+  
+  # truncate values for better viz
+  mean.val <- mean(terra::values(rast1), na.rm = TRUE)
+  low.val<- min(terra::values(rast1), na.rm = TRUE)
+  zmin <- max(mean.val, 0.001, na.rm = TRUE)
+  zmin <- max(zmin, 0.01, na.rm = TRUE)
+  zmax <- max(terra::values(rast1), na.rm = TRUE)
+  q99 <- quantile(terra::values(rast1), probs=c(0.999), na.rm=TRUE)
+  #print(paste0("low.val = ", low.val,",zmin = ", zmin, ", q99 = ", q99, ", zmax = ", zmax  ))
+  
+  plot.one<-ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =rast1)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
+                      ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    #ggplot2:: scale_fill_viridis_c( direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    scale_fill_gradientn(
+      na.value = "transparent",
+      colors = c(
+        "#F9FFAF",
+        hcl.colors(100, palette = "viridis", rev = TRUE),
+        "#255668"
+      ),
+      values = scales::rescale(
+        sort(c(range(terra::values(rast1)), c(zmin, q99))),
+        to = c(0, 1)
+      ),
+      oob = scales::squish,
+      limits = c(zmin, q99)
+    ) +
+    
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(names(rast1))
+  one.spp.plot.cat.list[[t]]<- plot.one
+  print(paste("Plotting",names(rast1), format(Sys.time(), "%X") ))
+  
