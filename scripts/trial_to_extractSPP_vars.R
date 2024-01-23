@@ -82,7 +82,7 @@ for (k in groupings_labs) {
  
     #tryout <- terra::ifel(sample1 >=q75,  1, NA) ## this keeps the raster, but only manipulates the values within
     
-    #area.curr <-sum(terra::values(sample1), na.rm = TRUE)
+    area.curr <-sum(terra::values(sample1), na.rm = TRUE) # get surface area of current core
     
 
 
@@ -118,18 +118,20 @@ for (k in groupings_labs) {
       
       
       
-      #future.spp.area <-sum(terra::values(future1), na.rm = TRUE)
+      future.spp.area <-sum(terra::values(future1), na.rm = TRUE) # get the surface  area of the future core 
       
       
-      future.data.alt <-cbind(future.data.alt, mean.altfut1)
-      future.data.area <-cbind(future.data.area, future.spp.area)
+      future.data.alt <-cbind(future.data.alt, mean.altfut1
+                              )
+      future.data.area <-cbind(future.data.area, future.spp.area
+                               )
     }
     
-    mean.one.alt <-mean(future.data.alt)
-    mean.one.area <-mean(future.data.area)
+    mean.one.alt <-mean(future.data.alt) # mean elevation of all future scenarios
+    mean.one.area <-mean(future.data.area) # mean surface area of all core areas 
     
-    one.specie.all <- c(k, i,  mean.alt, #area.curr, 
-                        mean.one.alt, #mean.one.area
+    one.specie.all <- c(k, i,  mean.alt, area.curr, 
+                        mean.one.alt, mean.one.area
                         )
     
     alt.area.fut.mean.spp<- rbind(alt.area.fut.mean.spp, one.specie.all)
@@ -147,9 +149,10 @@ print(paste("total duration of run", round(difftime(end.time,begin.time, units =
 } # as is "total duration of run 69.9 mins" for only elevation extraction
 # record new time after adding the current distribution raster creation and crop before the extraction of q75 
 
-#saveRDS(altitude.mean, "data/altitude.mean.RDS")
+saveRDS(alt.area.fut.mean.spp, "data/alt.area.fut.mean.spp.RDS")
 
-#altitude.mean <- readRDS("data/altitude.mean.RDS")
+#alt.area.fut.mean.spp <- readRDS("data/altitude.mean.RDS")
+
 alt.area.fut.mean.spp.DF <- as.data.frame(alt.area.fut.mean.spp, row.names = FALSE)
 
 Elev_Shift_spp <- alt.area.fut.mean.spp.DF|>
@@ -168,15 +171,17 @@ Elev_Shift_spp <- alt.area.fut.mean.spp.DF|>
 
 
 #write.csv(Elev_Shift_spp, "data/Elev_Shift_spp.csv")
-Elev_Shift_spp <- read.csv("data/Elev_Shift_spp.csv")
+#Elev_Shift_spp <- read.csv("data/Elev_Shift_spp.csv")
 
-spp_list_pub <- read.csv( "data/spp_list_pub.csv")
+#spp_list_pub <- read.csv( "data/spp_list_pub.csv")
 
 spp_list_pub <- spp_list_pub |>
   dplyr::left_join(Elev_Shift_spp, by= dplyr::join_by(CODE == species_code)) |>
   dplyr::select("CODE","ENGLISH.NAME","SCIENTIFIC.NAME","Migra_status", "included_or_dropped", "avg_Cur_altitude", "Delta_Elev")
 
-#write.csv(spp_list_pubWORKING, "data/spp_list_pubCOMPARISON.csv", row.names = FALSE)
+#write.csv(spp_list_pub, "data/spp_list_pubwELEV.csv", row.names = FALSE)
+
+
 
 ##### ##### ##### ##### ##### 
 ##### ##### ##### ##### ##### 
@@ -193,3 +198,4 @@ top5spp.wide <- top5spp|>
 
 spp_list_pub <- spp_list_pub |>
   dplyr::left_join(top5spp.wide, by= dplyr::join_by(CODE == Spp))
+#write.csv(spp_list_pub, "data/spp_list_pubInProg.csv", row.names = FALSE)
