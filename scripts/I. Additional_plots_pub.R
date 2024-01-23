@@ -96,6 +96,7 @@ cec_crop <-  sf::st_crop(NA_CEC_Eco_Level2, c(xmin=as.numeric(terra::ext(xy_sf)[
 #all points, in black (could be split into the 3 subsets overplotted as well)
 A <- ggplot2::ggplot() +
   ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En), color = NA,  alpha=0.25)+
+  ggplot2::scale_fill_viridis_d(direction = -1)+ ######## PLAY WILL COLOUR FOR BETTER VIZ
   ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   
@@ -109,18 +110,19 @@ A <- ggplot2::ggplot() +
   #ggplot2::geom_sf(data = canada_crop, alpha =0)+
   #ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
   #ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-ggplot2::theme_bw()+
+  ggplot2::theme_bw()+
   ggplot2::geom_sf(data=xy_sf, size=0.01, colour="black", alpha=0.05) +
   #ggplot2::geom_sf(data=xy_sf_train, size=0.0001,colour="blue")+
   #ggplot2::geom_sf(data=xy_sf_test, size=0.0001,colour="red")+
   ggplot2::coord_sf(expand = FALSE)+ 
-  ggplot2::guides(color = ggplot2::guide_legend(title = "CEC level 2 Ecoregions")) +
+  ggplot2::guides(fill = ggplot2::guide_legend(title = "CEC level 2 Ecoregions")) +
   ggplot2::ggtitle("Full dataset")
 
 
 #training data, presence-absence
 C <- ggplot2::ggplot() +
   ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En), color = NA, alpha=0.25)+
+  ggplot2::scale_fill_viridis_d(direction = -1)+ ######## PLAY WILL COLOUR FOR BETTER VIZ
   ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
@@ -138,6 +140,7 @@ C <- ggplot2::ggplot() +
 #training data, presence-absence
 D <- ggplot2::ggplot() +
   ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En),  color = NA, alpha=0.25)+
+  ggplot2::scale_fill_viridis_d(direction = -1)+ ######## PLAY WILL COLOUR FOR BETTER VIZ
   ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
@@ -158,11 +161,11 @@ D <- ggplot2::ggplot() +
 
 
 subsamples_plots3 <- cowplot::plot_grid(A, #C, 
-                                        D, labels = c("A", #"B",
-                                                      "C"), rel_widths = c(2,1.75, 1.75),  nrow = 1 )
+                                        D, labels = c("A", "B"#,"C"
+                                                      ), rel_widths = c(2,1.75, 1.75),  nrow = 1 )
 
 #subsamples_plots3
-#ggplot2::ggsave(subsamples_plots3, filename = "subsamples_plotsOPTION1v2.png", path = "plots/", units = "in", width = 20, height = 9, dpi = 300, bg = "white")
+#ggplot2::ggsave(subsamples_plots3, filename = "subsamples_plotsOPTION2v3.png", path = "plots/", units = "in", width = 20, height = 9, dpi = 300, bg = "white")
 
 
 ################################################
@@ -311,21 +314,28 @@ ggplot()+
   ggplot2::coord_sf(expand = FALSE)+
   theme_bw()
 
+
 ####################################################
 #### 2) Mapping of Protected areas Alaska, Yukon, NWT
 ####################################################
 
-#call dissolve_sf from pre- run of script H
-dissolve_sf
+#call yukon_PAs_crs from pre- run of script H
 
+#one plot as sample 
 
-model_PAs_ecoregs <- ggplot2::ggplot()+
+##FULL RASTER with PAs outlined
+#model_PAs_ecoregs <- 
+  ggplot2::ggplot()+
   ggplot2::geom_sf(data = poly, fill = "grey") +
   ggplot2::geom_sf(data = usa_crop, fill = "white")+
   ggplot2::geom_sf(data = canada_crop, fill = "white")+
-  ggplot2::geom_sf(data = dissolve_sf, fill = "green" )+
-  #ggplot2::geom_sf(data = yukon_PAs_crs, fill = "lightgreen" )+
-  #ggplot2:: geom_sf(data = alaska.pas_crs,fill = "lightblue" )+
+ 
+  tidyterra::geom_spatraster(
+    data = (all.group.rasters[[1]])[[4]]
+)+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    
+  ggplot2::geom_sf(data = yukon_PAs_crs, alpha = 0 )+
   ggplot2::geom_sf(data = usa_crop, alpha =0)+
   ggplot2::geom_sf(data = canada_crop, alpha =0)+
   ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
@@ -336,18 +346,70 @@ model_PAs_ecoregs <- ggplot2::ggplot()+
                     expand = FALSE)+
   ggplot2::theme_bw()
 
-model_PAs_ecoregs
+
 #ggplot2::ggsave(model_PAs_ecoregs, filename = "model_PAs_ecoregs.png", path = "plots/", units = "in", width = 7.5, height = 7, dpi = 300, bg = "white")
 
 #map a sample stack or the three RES, LDM, SDM for Ref x Suit
 
+  
+  
+#one plot as sample 
+
+##Masked RASTER with PAs
+  maskedPATest <- terra::mask(
+    (all.group.rasters[[1]])[[4]] , yukon_PAs_crs
+    
+  )
+  terra::plot(maskedPATest)
+  terra::plot(maskedPATest)
+  er <- terra::rast(terra::ext(maskedPATest), resolution=terra::res(maskedPATest), crs = rast.crs)
+  terra::values(er) <- 1
+  terra::plot(er)
+  xx <- terra::ifel( maskedPATest > 0, NA, er ) # use this to cover the raster
+  terra::plot(xx)
+
+  xxx <- terra::as.polygons(xx) #make a polygon out of the NAing raster for PAs
+  terra::plot(xxx)
+  
+  
+
+  
+#one plot as sample 
+  ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    
+    tidyterra::geom_spatraster(
+      data = (all.group.rasters[[1]])[[4]]
+    )+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    tidyterra::geom_spatvector(
+      data = xxx, fill = "white"#ggplot2::aes(color = "white")
+    )+
+    ggplot2::geom_sf(data = yukon_PAs_crs, alpha = 0 )+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], 
+                             terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
+                      ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()
 
 
+
+############
+###Make the 3 migra cats for Ref x Suit in 1 plot
+############
+  
 refxsuit_RES <- all.group.rasters[[1]][[4]]
 refxsuit_LDM <- all.group.rasters[[2]][[4]]
 refxsuit_SDM <- all.group.rasters[[3]][[4]]
 
 refxsuit3rasts <- list(refxsuit_RES, refxsuit_LDM, refxsuit_SDM)
+rast.names <- c("refxsuit_RES", "refxsuit_LDM", "refxsuit_SDM")
 
 ## VERSION 1
 sample_plot_list <- NULL
@@ -360,7 +422,7 @@ for (n in 1:length(refxsuit3rasts)) {
     ggplot2::geom_sf(data = usa_crop, fill = "white")+
     ggplot2::geom_sf(data = canada_crop, fill = "white")+
     tidyterra::geom_spatraster(data = raster_stacked)+
-    ggplot2::geom_sf(data = dissolve_sf, alpha = 0 )+
+    ggplot2::geom_sf(data = yukon_PAs_crs, alpha = 0 )+
     #ggplot2::geom_sf(data = yukon_PAs_crs, fill = "lightgreen" )+
     #ggplot2:: geom_sf(data = alaska.pas_crs,fill = "lightblue" )+
     ggplot2::geom_sf(data = usa_crop, alpha =0)+
@@ -372,11 +434,14 @@ for (n in 1:length(refxsuit3rasts)) {
                       ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
                       expand = FALSE)+
     ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style is turbo, viridis alone is for green colours?
-    ggplot2::theme_bw()
+    ggplot2::theme_bw()+
+    ggplot2::ggtitle(rast.names[[n]])
+  
   
   
   sample_plot_list[[n]]<-plot1
 }
+
 sample_plot_PAs_refxsuit <- cowplot::plot_grid(plotlist = sample_plot_list, ncol = 3)
 #ggplot2::ggsave(sample_plot_PAs_refxsuit, filename = "sample_plot_PAs_refxsuitver1.png", path = "plots/", units = "in", width = 22.5, height = 7, dpi = 300, bg = "white")
 
@@ -386,16 +451,20 @@ sample_plot_list2<- NULL
 for (n in 1:length(refxsuit3rasts)) {
   
   raster_stacked <- refxsuit3rasts[[n]]
-  raster_stacked <- terra::mask(raster_stacked, yukon_PAs_crs)
   
-  plot1<-ggplot2::ggplot()+
+  plot1<-  ggplot2::ggplot()+
     ggplot2::geom_sf(data = poly, fill = "grey") +
     ggplot2::geom_sf(data = usa_crop, fill = "white")+
     ggplot2::geom_sf(data = canada_crop, fill = "white")+
-    tidyterra::geom_spatraster(data = raster_stacked)+
-    ggplot2::geom_sf(data = dissolve_sf, alpha = 0 )+
-    #ggplot2::geom_sf(data = yukon_PAs_crs, fill = "lightgreen" )+
-    #ggplot2:: geom_sf(data = alaska.pas_crs,fill = "lightblue" )+
+    
+    tidyterra::geom_spatraster(
+      data = raster_stacked
+    )+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    tidyterra::geom_spatvector(
+      data = xxx, fill = "white"#ggplot2::aes(color = "white")
+    )+
+    ggplot2::geom_sf(data = yukon_PAs_crs, alpha = 0 )+
     ggplot2::geom_sf(data = usa_crop, alpha =0)+
     ggplot2::geom_sf(data = canada_crop, alpha =0)+
     ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
@@ -404,14 +473,17 @@ for (n in 1:length(refxsuit3rasts)) {
                              terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
                       ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
                       expand = FALSE)+
-    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style is turbo, viridis alone is for green colours?
-    ggplot2::theme_bw()
-  plot1
+    ggplot2::theme_bw()+
+    ggplot2::ggtitle(rast.names[[n]])
+  
   
   sample_plot_list2[[n]]<-plot1
 }
 sample_plot_PAs_refxsuit2 <- cowplot::plot_grid(plotlist = sample_plot_list2, ncol = 3)
 ggplot2::ggsave(sample_plot_PAs_refxsuit2, filename = "sample_plot_PAs_refxsuitver2.png", path = "plots/", units = "in", width = 22.5, height = 7, dpi = 300, bg = "white")
+
+
+
 
 
 
