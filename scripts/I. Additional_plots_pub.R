@@ -76,16 +76,29 @@ USA_test <- sf::st_crop(USA_test, c(xmin=as.numeric(terra::ext(xy_sf)[1]),
                               ymin=as.numeric(terra::ext(xy_sf)[3]), 
                               ymax=as.numeric(terra::ext(xy_sf)[4])))
 
-#provincial limits version
+
+KEY<-readRDS("data/YT Boreal Refugia Drive/QPAD_Output/ALFL_Data.rds") 
+
+xy_frame <- unique(KEY[,c(1,6,7)]) # 63681 PC Locations, avoiding "re sightings"
+xy <- xy_frame[,c(2:3)] # only coordinates in lat lon
+xy_sf <-sf::st_as_sf(xy, coords = c(1,2))
+sf::st_crs(xy_sf) <- "EPSG:4326"
+xy_sf <- sf::st_transform(xy_sf, sf::st_crs(NA_CEC_Eco_Level2) )
+CECgroup<-sf::st_join(xy_sf,NA_CEC_Eco_Level2)
+names_cec <- dplyr::filter( CECgroup, NameL2_En != "NA") |> dplyr::distinct(NameL2_En) |>  dplyr::pull() |> sort()
+NA_CEC_Eco_Level2_short <- dplyr::filter( NA_CEC_Eco_Level2, NameL2_En %in% names_cec)
+NA_CEC_Eco_Level2_gray <- dplyr::filter( NA_CEC_Eco_Level2, NameL2_En %in% c("Softwood Shield"  ,  "Northern Arctic" ))
+NA_CEC_Eco_Level2_gray<- sf::st_crop(NA_CEC_Eco_Level2_gray, c(xmin=as.numeric(terra::ext(xy_sf)[1]), 
+                                                               xmax=as.numeric(terra::ext(xy_sf)[2]), 
+                                                               ymin=as.numeric(terra::ext(xy_sf)[3]), 
+                                                               ymax=as.numeric(terra::ext(xy_sf)[4])))
+NA_CEC_Eco_Level2_short <-  sf::st_crop(NA_CEC_Eco_Level2_short, c(xmin=as.numeric(terra::ext(xy_sf)[1]), 
+                                                                   xmax=as.numeric(terra::ext(xy_sf)[2]), 
+                                                                   ymin=as.numeric(terra::ext(xy_sf)[3]), 
+                                                                   ymax=as.numeric(terra::ext(xy_sf)[4])))
 
 
-cec_crop <-  sf::st_crop(NA_CEC_Eco_Level2, c(xmin=as.numeric(terra::ext(xy_sf)[1]), 
-                                          xmax=as.numeric(terra::ext(xy_sf)[2]), 
-                                          ymin=as.numeric(terra::ext(xy_sf)[3]), 
-                                          ymax=as.numeric(terra::ext(xy_sf)[4])))
-
-
-
+#turbo_pal <- c(viridis::viridis(n = 14, direction = -1))
 
 ########################
 #CEC ecoregions version
@@ -94,35 +107,62 @@ cec_crop <-  sf::st_crop(NA_CEC_Eco_Level2, c(xmin=as.numeric(terra::ext(xy_sf)[
 # filled
 
 #all points, in black (could be split into the 3 subsets overplotted as well)
-A <- ggplot2::ggplot() +
-  ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En), color = NA,  alpha=0.25)+
-  ggplot2::scale_fill_viridis_d(direction = -1)+ ######## PLAY WILL COLOUR FOR BETTER VIZ
+A <-
+  ggplot2::ggplot() +
+  ggplot2::geom_sf(data = NA_CEC_Eco_Level2_gray, fill =  "gray" , color = NA, alpha = 0.2)+
+  ggplot2::geom_sf(data = NA_CEC_Eco_Level2_short, ggplot2::aes(fill = NameL2_En), color = NA)+
+  ggplot2::scale_fill_manual( values =  c(  "Alaska Boreal Interior"= ggplot2::alpha("#FDE725FF", 0.2),
+                                            "Alaska Tundra" = ggplot2::alpha("#CBE11EFF", 0.2),
+                                            "Boreal Cordillera"= ggplot2::alpha("#97D83FFF", 1),
+                                            "Boreal Plains"= ggplot2::alpha("#67CC5CFF", 0.2),
+                                            "Brooks Range Tundra"= ggplot2::alpha("#40BC72FF", 0.2),
+                                            "Cold Deserts" = ggplot2::alpha("#25AC82FF", 0.2),
+                                            "Marine West Coast Forests"= ggplot2::alpha( "#1F998AFF", 0.2),
+                                            #"Northern Arctic" = ggplot2::alpha("#39568CFF", 0.2),
+                                            "Southern Arctic"= ggplot2::alpha("#24878EFF", 0.2),
+                                            "Taiga Cordillera"= ggplot2::alpha("#2B748EFF", 1),
+                                            "Taiga Shield"= ggplot2::alpha( "#34618DFF", 0.2),#"Softwood Shield"= ggplot2::alpha("#2A788EFF", 0.2), 
+                                            "Taiga Plains"= ggplot2::alpha("#3D4D8AFF", 0.2),
+                                            
+                                            "Temperate Prairies"= ggplot2::alpha("#453581FF", 0.2),
+                                            "West Central Semi-Arid Prairies"= ggplot2::alpha("#481D6FFF", 0.2),
+                                            "Western Cordillera"= ggplot2::alpha("#440154FF", 0.2)))+
   ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
-  
-  #ggplot2::geom_sf(data = poly, fill = "grey") +
-  #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
-  #ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
-  #geom_sf(data = nwt.pas, fill = "pink" )+
-  #geom_sf(data = yukon_PAs_crs, fill = "lightgreen" )+
-  #geom_sf(data = alaska.pas_crs,fill = "lightblue" )+
-  #ggplot2::geom_sf(data = usa_crop, alpha =0)+
-  #ggplot2::geom_sf(data = canada_crop, alpha =0)+
-  #ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-  #ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
   ggplot2::theme_bw()+
   ggplot2::geom_sf(data=xy_sf, size=0.01, colour="black", alpha=0.05) +
   #ggplot2::geom_sf(data=xy_sf_train, size=0.0001,colour="blue")+
   #ggplot2::geom_sf(data=xy_sf_test, size=0.0001,colour="red")+
   ggplot2::coord_sf(expand = FALSE)+ 
   ggplot2::guides(fill = ggplot2::guide_legend(title = "CEC level 2 Ecoregions")) +
-  ggplot2::ggtitle("Full dataset")
+  ggplot2::ggtitle("Full dataset")+
+  ggplot2::theme(
+    legend.position = c(.15, .3),
+    legend.margin = ggplot2::margin(6, 6, 6, 6)
+  )
 
 
 #training data, presence-absence
 C <- ggplot2::ggplot() +
+  ggplot2::geom_sf(data = NA_CEC_Eco_Level2_gray, fill =  "gray" , color = NA, alpha = 0.2)+
   ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En), color = NA, alpha=0.25)+
-  ggplot2::scale_fill_viridis_d(direction = -1)+ ######## PLAY WILL COLOUR FOR BETTER VIZ
+  #ggplot2::scale_fill_viridis_d(direction = -1)+ ######## PLAY WILL COLOUR FOR BETTER VIZ
+  ggplot2::scale_fill_manual( values =  c(  "Alaska Boreal Interior"= ggplot2::alpha("#FDE725FF", 0.2),
+                                            "Alaska Tundra" = ggplot2::alpha("#CBE11EFF", 0.2),
+                                            "Boreal Cordillera"= ggplot2::alpha("#97D83FFF", 1),
+                                            "Boreal Plains"= ggplot2::alpha("#67CC5CFF", 0.2),
+                                            "Brooks Range Tundra"= ggplot2::alpha("#40BC72FF", 0.2),
+                                            "Cold Deserts" = ggplot2::alpha("#25AC82FF", 0.2),
+                                            "Marine West Coast Forests"= ggplot2::alpha( "#1F998AFF", 0.2),
+                                            #"Northern Arctic" = ggplot2::alpha("#39568CFF", 0.2),
+                                            "Southern Arctic"= ggplot2::alpha("#24878EFF", 0.2),
+                                            "Taiga Cordillera"= ggplot2::alpha("#2B748EFF", 1),
+                                            "Taiga Shield"= ggplot2::alpha( "#34618DFF", 0.2),#"Softwood Shield"= ggplot2::alpha("#2A788EFF", 0.2), 
+                                            "Taiga Plains"= ggplot2::alpha("#3D4D8AFF", 0.2),
+                                            
+                                            "Temperate Prairies"= ggplot2::alpha("#453581FF", 0.2),
+                                            "West Central Semi-Arid Prairies"= ggplot2::alpha("#481D6FFF", 0.2),
+                                            "Western Cordillera"= ggplot2::alpha("#440154FF", 0.2)))+
   ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
@@ -135,18 +175,40 @@ C <- ggplot2::ggplot() +
   ggplot2::coord_sf(expand = FALSE)+
   ggplot2::guides(fill = "none",
                   colour = ggplot2::guide_legend(override.aes = list(size=2.5)))+
-  ggplot2::ggtitle("Full dataset: presence/absence")
+  ggplot2::ggtitle("Full dataset: presence/absence")+
+  ggplot2::theme(
+    legend.position = c(.15, .25),
+    legend.margin = ggplot2::margin(6, 6, 6, 6)
+  )
 
 #training data, presence-absence
 D <- ggplot2::ggplot() +
+  ggplot2::geom_sf(data = NA_CEC_Eco_Level2_gray, fill =  "gray" , color = NA, alpha = 0.2)+
+  
   ggplot2::geom_sf(data = cec_crop, ggplot2::aes(fill = NameL2_En),  color = NA, alpha=0.25)+
-  ggplot2::scale_fill_viridis_d(direction = -1)+ ######## PLAY WILL COLOUR FOR BETTER VIZ
+  #ggplot2::scale_fill_viridis_d(direction = -1)+ ######## PLAY WILL COLOUR FOR BETTER VIZ
+  ggplot2::scale_fill_manual( values =  c(  "Alaska Boreal Interior"= ggplot2::alpha("#FDE725FF", 0.2),
+                                            "Alaska Tundra" = ggplot2::alpha("#CBE11EFF", 0.2),
+                                            "Boreal Cordillera"= ggplot2::alpha("#97D83FFF", 1),
+                                            "Boreal Plains"= ggplot2::alpha("#67CC5CFF", 0.2),
+                                            "Brooks Range Tundra"= ggplot2::alpha("#40BC72FF", 0.2),
+                                            "Cold Deserts" = ggplot2::alpha("#25AC82FF", 0.2),
+                                            "Marine West Coast Forests"= ggplot2::alpha( "#1F998AFF", 0.2),
+                                            #"Northern Arctic" = ggplot2::alpha("#39568CFF", 0.2),
+                                            "Southern Arctic"= ggplot2::alpha("#24878EFF", 0.2),
+                                            "Taiga Cordillera"= ggplot2::alpha("#2B748EFF", 1),
+                                            "Taiga Shield"= ggplot2::alpha( "#34618DFF", 0.2),#"Softwood Shield"= ggplot2::alpha("#2A788EFF", 0.2), 
+                                            "Taiga Plains"= ggplot2::alpha("#3D4D8AFF", 0.2),
+                                            "Temperate Prairies"= ggplot2::alpha("#453581FF", 0.2),
+                                            "West Central Semi-Arid Prairies"= ggplot2::alpha("#481D6FFF", 0.2),
+                                            "Western Cordillera"= ggplot2::alpha("#440154FF", 0.2)))+
   ggplot2::geom_sf(data=BCR4.1_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   ggplot2::geom_sf(data=BCR4.0_USACAN, ggplot2::aes(fill = NameL2_En), color = NA)+
   #ggplot2::geom_sf(data = USA_test, color = "grey", fill = "white")+
   #ggplot2::geom_sf(data = canada_test, color = "grey", fill = "white")+
   ggplot2::theme_bw()+
-  ggplot2::geom_sf(data=xy_sf3[which(xy_sf3$P_A == "absence"),], ggplot2::aes(color ="#F8766D"), size=0.1, alpha=0.1)+
+  ggplot2::geom_sf(data=xy_sf3[which(xy_sf3$P_A == "absence"),], ggplot2::aes(color ="#F8766D"), size=0.1, alpha=0.1
+                   )+
   ggplot2::geom_sf(data=xy_sf3[which(xy_sf3$P_A == "presence"),], ggplot2::aes(color="blue"), size=0.1)+
   #ggplot2::geom_sf(data=xy_sf_test, size=0.0001, aes(color="black"))+
   ggplot2::scale_colour_manual(name = 'Observations', 
@@ -157,15 +219,20 @@ D <- ggplot2::ggplot() +
   ggplot2::coord_sf(expand = FALSE)+
   ggplot2::guides(fill = "none",
                   color = ggplot2::guide_legend(override.aes = list(size=2.5)))+
-  ggplot2::ggtitle("Training dataset: presence/absence")
+  ggplot2::ggtitle("Training dataset: presence/absence")+
+  ggplot2::theme(
+    legend.position = c(.15, .25),
+    legend.margin = ggplot2::margin(6, 6, 6, 6)
+  )
 
 
-subsamples_plots3 <- cowplot::plot_grid(A, #C, 
-                                        D, labels = c("A", "B"#,"C"
-                                                      ), rel_widths = c(2,1.75, 1.75),  nrow = 1 )
+subsamples_plots3 <- cowplot::plot_grid(A, C, 
+                                        D, labels = c("A", "B","C"
+                                                      ), #rel_widths = c(2,1.75, 1.75), 
+                                        nrow = 1 )
 
 #subsamples_plots3
-#ggplot2::ggsave(subsamples_plots3, filename = "subsamples_plotsOPTION2v3.png", path = "plots/", units = "in", width = 20, height = 9, dpi = 300, bg = "white")
+#ggplot2::ggsave(subsamples_plots3, filename = "subsamples_plotsOPTION2v4.png", path = "plots/", units = "in", width = 25, height = 8, dpi = 300, bg = "white")
 
 
 ################################################
@@ -316,7 +383,7 @@ ggplot()+
 
 
 ####################################################
-#### 2) Mapping of Protected areas Alaska, Yukon, NWT
+#### 2) Mapping of Protected areas Alaska, Yukon, NWT #### ALREADY IN THE H script!!!!!!!!!!!!!!!!
 ####################################################
 
 #call yukon_PAs_crs from pre- run of script H
@@ -399,95 +466,391 @@ ggplot()+
     ggplot2::theme_bw()
 
 
-
-############
-###Make the 3 migra cats for Ref x Suit in 1 plot
-############
+########################################################################
+########################################################################
+# samples of BOCH and BCCH
   
-refxsuit_RES <- all.group.rasters[[1]][[4]]
-refxsuit_LDM <- all.group.rasters[[2]][[4]]
-refxsuit_SDM <- all.group.rasters[[3]][[4]]
-
-refxsuit3rasts <- list(refxsuit_RES, refxsuit_LDM, refxsuit_SDM)
-rast.names <- c("refxsuit_RES", "refxsuit_LDM", "refxsuit_SDM")
-
-## VERSION 1
-sample_plot_list <- NULL
-for (n in 1:length(refxsuit3rasts)) {
+  {boch.lab<- "BOCH"
+  bcch.lab <- "BCCH"
   
-  raster_stacked <- refxsuit3rasts[[n]]
   
-  plot1<-ggplot2::ggplot()+
+  #plot curr scaled, refugia, ref x suit and suit
+  refxsuit.boch <- terra::rast(x =  files.to.read[grep(paste0(boch.lab,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
+  terra::crs(refxsuit.boch) <- rast.crs # assign CRS to avoid warning
+  refxsuit.boch <- terra::mask(refxsuit.boch, NA_rast.crs)
+  refxsuit.boch <- terra::mask(refxsuit.boch, AKrast)
+  
+  refxsuit.bcch <- terra::rast(x =  files.to.read[grep(paste0(bcch.lab,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
+  terra::crs(refxsuit.bcch) <- rast.crs # assign CRS to avoid warning
+  refxsuit.bcch <- terra::mask(refxsuit.bcch, NA_rast.crs)
+  refxsuit.bcch <- terra::mask(refxsuit.bcch, AKrast)
+  
+  ref.boch <- terra::rast(x = files.to.read[grep(paste0(boch.lab,"_","Refugia_RCPmean.tif"), files.to.read)])
+  
+  terra::crs(ref.boch) <- rast.crs # assign crs to avoid warning
+  ref.boch <- terra::mask(ref.boch, NA_rast.crs)
+  ref.boch <- terra::mask(ref.boch, AKrast)
+  
+  suit.boch <- terra::rast(x =  files.to.read[grep(paste0(boch.lab,"ScaledSuitability_RCPmean.tif"), files.to.read)])
+  terra::crs(suit.boch) <- rast.crs # assign CRS to avoid warning
+  suit.boch <- terra::mask(suit.boch, NA_rast.crs)
+  suit.boch <- terra::mask(suit.boch, AKrast)
+  
+  
+  boch.plot <- ggplot2::ggplot()+
     ggplot2::geom_sf(data = poly, fill = "grey") +
     ggplot2::geom_sf(data = usa_crop, fill = "white")+
     ggplot2::geom_sf(data = canada_crop, fill = "white")+
-    tidyterra::geom_spatraster(data = raster_stacked)+
-    ggplot2::geom_sf(data = yukon_PAs_crs, alpha = 0 )+
-    #ggplot2::geom_sf(data = yukon_PAs_crs, fill = "lightgreen" )+
-    #ggplot2:: geom_sf(data = alaska.pas_crs,fill = "lightblue" )+
+    tidyterra::geom_spatraster(data =refxsuit.boch)+
     ggplot2::geom_sf(data = usa_crop, alpha =0)+
-    ggplot2::geom_sf(data = canada_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
     ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
     ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-    ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], 
-                             terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
-                      ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
+                      ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
                       expand = FALSE)+
-    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style is turbo, viridis alone is for green colours?
     ggplot2::theme_bw()+
-    ggplot2::ggtitle(rast.names[[n]])
-  
-  
-  
-  sample_plot_list[[n]]<-plot1
-}
-
-sample_plot_PAs_refxsuit <- cowplot::plot_grid(plotlist = sample_plot_list, ncol = 3)
-#ggplot2::ggsave(sample_plot_PAs_refxsuit, filename = "sample_plot_PAs_refxsuitver1.png", path = "plots/", units = "in", width = 22.5, height = 7, dpi = 300, bg = "white")
-
-
-#VERSION 2
-sample_plot_list2<- NULL
-for (n in 1:length(refxsuit3rasts)) {
-  
-  raster_stacked <- refxsuit3rasts[[n]]
-  
-  plot1<-  ggplot2::ggplot()+
-    ggplot2::geom_sf(data = poly, fill = "grey") +
-    ggplot2::geom_sf(data = usa_crop, fill = "white")+
-    ggplot2::geom_sf(data = canada_crop, fill = "white")+
-    
-    tidyterra::geom_spatraster(
-      data = raster_stacked
-    )+
     ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-    tidyterra::geom_spatvector(
-      data = xxx, fill = "white"#ggplot2::aes(color = "white")
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
     )+
-    ggplot2::geom_sf(data = yukon_PAs_crs, alpha = 0 )+
+    ggplot2::ggtitle(paste("Suitable refugia for", boch.lab))
+  
+  bcch.plot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =refxsuit.bcch)+
     ggplot2::geom_sf(data = usa_crop, alpha =0)+
-    ggplot2::geom_sf(data = canada_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
     ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
     ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-    ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], 
-                             terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
-                      ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.bcch)[1], terra::ext(refxsuit.bcch)[2]),
+                      ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
                       expand = FALSE)+
     ggplot2::theme_bw()+
-    ggplot2::ggtitle(rast.names[[n]])
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Suitable refugia for", bcch.lab))
   
   
-  sample_plot_list2[[n]]<-plot1
-}
-sample_plot_PAs_refxsuit2 <- cowplot::plot_grid(plotlist = sample_plot_list2, ncol = 3)
-ggplot2::ggsave(sample_plot_PAs_refxsuit2, filename = "sample_plot_PAs_refxsuitver2.png", path = "plots/", units = "in", width = 22.5, height = 7, dpi = 300, bg = "white")
+  sample_boch_bcch <- cowplot::plot_grid(bcch.plot, boch.plot , labels = c("A", "B"
+  ), 
+  #rel_widths = c(1.75, 2, 2),  
+  nrow = 1
+  )
+  
+  ggplot2::ggsave(sample_boch_bcch, filename = paste0("sample_boch_bcch.png") ,
+                  path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
+  
+  
+  
+  boch.curr <- readRDS(files.vect[grep(boch.lab, files.vect)] )
+  Max95<-quantile(boch.curr$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+  
+  rast1 <- boch.curr |>
+    dplyr::mutate(
+      std.mean = Mean/Max95
+    )
+  rast1<-terra::rast(rast1, crs =  rast.crs)  
+  rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
+  
+  rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
+  terra::crs(rast1) <- rast.crs # assign CRS to avoid warning
+  rast1 <- terra::crop(rast1, NA_rast.crs)
+  
+  rast1 <- terra::mask(rast1, NA_rast.crs)
+  rast1 <- terra::mask(rast1, AKrast)
+  
+  
+  
+  bcch.curr <- readRDS(files.vect[grep(bcch.lab, files.vect)] )
+  Max95<-quantile(bcch.curr$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+  
+  rast2 <- bcch.curr |>
+    dplyr::mutate(
+      std.mean = Mean/Max95
+    )
+  rast2<-terra::rast(rast2, crs =  rast.crs)  
+  
+  rast2 <- terra::ifel(rast2 >=1, 1, rast2 ) # cap to a max of 1
+  
+  rast2 <- rast2[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
+  terra::crs(rast2) <- rast.crs # assign CRS to avoid warning
+  rast2<- terra::crop(rast2, NA_rast.crs)
+  
+  rast2 <- terra::mask(rast2, NA_rast.crs)
+  rast2 <- terra::mask(rast2, AKrast)
+  
+  
+  boch.curplot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =rast1)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
+                      ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Current suitable hab.", boch.lab))+
+    ggplot2::scale_size_continuous(range = c(0, 1.00))
+  
+  bcch.curplot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =rast2)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.bcch)[1], terra::ext(refxsuit.bcch)[2]),
+                      ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Current suitable hab. for", bcch.lab))
+  
+  
+  
+  boch.refplot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =ref.boch)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.bcch)[1], terra::ext(refxsuit.bcch)[2]),
+                      ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Refugia probability for",boch.lab))
+  
+  sample_boch_bcchCUR <- cowplot::plot_grid(bcch.curplot, boch.curplot , labels = c("A", "B"
+  ), 
+  #rel_widths = c(1.75, 2, 2),  
+  nrow = 1
+  )
+  
+  boch.suit.plot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =suit.boch)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
+                      ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Future suitability for", boch.lab))
+  
+  ggplot2::ggsave(sample_boch_bcchCUR, filename = paste0("sample_boch_bcchCUR.png") ,
+                  path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
+  
+  
+  boch.plots <- cowplot::plot_grid(boch.curplot, boch.refplot, boch.suit.plot, boch.plot, rel_widths = c(1.95, 2, 2,2),  labels = c("A", "B","C", "D"), nrow = 1)
+  
+  ggplot2::ggsave(boch.plots, filename = paste0("sample_boch.plots.png") ,
+                  path = "plots/", units = "in", width = 15, height = 3.75, dpi = 300, bg = "white")
+  
+  
+### ONLY FOR BOCH
+### Current and futer densities
+  
+#present
+  boch.curr <- readRDS(files.vect[grep(boch.lab, files.vect)] )
+  Max95<-quantile(boch.curr$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+  rast1<-terra::rast(boch.curr, crs =  rast.crs)  
+  rast1<-rast1[[1]]
+  rast1 <- terra::crop(rast1, NA_rast.crs)
+  
+  rast1 <- terra::mask(rast1, NA_rast.crs)
+  rast1 <- terra::mask(rast1, AKrast)
+  rast1 <- terra::ifel(rast1 >=Max95, Max95, rast1 ) # cap to a max of 1
+  
+  
+#future
+file.future <-list.files("C:/Users/vanoordtlahozf/OneDrive - EC-EC/Documents/github/BorealRefugiaYT/data/YT Boreal Refugia Drive/Files_1991_Future_Mean90CI_rds", full.names = TRUE)
+future.spp <-file.future[grep(boch.lab, file.future)]# vector of future models RDS for 1 spp
+  
+futures.boch <- NULL  
+  for (m in future.spp) { #loops over each future scenario pres abs and gets a mean alt and mean core area
+     future1<- readRDS(m)
+     #Max95<-quantile(future1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+     future1<-terra::rast(future1)# make RDS a raster
+     future1<-future1[[1]]
+     future1 <- terra::crop(future1, NA_rast.crs)
+     
+     future1 <- terra::mask(future1, NA_rast.crs)
+     future1 <- terra::mask(future1, AKrast)
+     future1 <- terra::ifel(future1 >=Max95, Max95, future1 ) # cap to a max of 1
+     
+     #plot(future1)
+     terra::crs(future1) <- rast.crs #assign crs to avoid warning
+     #plot(future1)
+     #future1 <- terra::mask(future1, bcr) #MASKING TO ONLY GET VALUES WITHIN THE ECOREGIONS
+     #future1 <- terra::ifel(future1 ==1, 1, NA) # only the values of presence in the core area remain
+     #altfut1 <- terra::mask(elevation, future1) 
+     #mean.altfut1 <- mean(terra::values(altfut1$elevation_1KMmd_GMTEDmd), na.rm = TRUE)
+     
+     futures.boch[[m]]<- future1
+     
+ 
+   }
+#get a mean of this list of rasters
 
 
+one.future.boch <- terra::app(terra::rast(futures.boch), "mean")#/length(refxsuit.mean.list)
 
 
-
-
-
+  
+  
+  boch.dens.cur <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =rast1)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(one.future.boch)[1], terra::ext(one.future.boch)[2]),
+                      ylim = c(terra::ext(one.future.boch)[3], terra::ext(one.future.boch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( direction = -1,na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Current pres/abs", boch.lab))
+  
+  boch.dens.fut<- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =one.future.boch)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(one.future.boch)[1], terra::ext(one.future.boch)[2]),
+                      ylim = c(terra::ext(one.future.boch)[3], terra::ext(one.future.boch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( na.value="transparent", direction = -1)+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Future pres/abs", boch.lab))
+  
+  
+  
+  
+  
+  
+  boch.densplots <- cowplot::plot_grid(boch.dens.cur, boch.dens.fut, nrow = 1)
+ 
+   ggplot2::ggsave(boch.densplots, filename = paste0("boch.densplots.png") ,
+                  path = "plots/", units = "in", width = 8, height = 3.75, dpi = 300, bg = "white")
+  
+  
+  
+  
+## ONLY FOR BOCH
+### pres abs
+  
+  sample1<- terra::rast( file.presabs[grep("BOCH", file.presabs)][grep("Present",file.presabs[grep(i, file.presabs)])])
+  
+  terra::crs(sample1) <- rast.crs
+  sample1 <- terra::crop(sample1, elevation)  # crop present raster, with elevation raster
+  sample1<- terra::ifel(sample1 ==1,  1, NA)
+  
+  
+  future.spp <-file.presabs[grep("BOCH", file.presabs)][-grep("Present",file.presabs[grep("BOCH", file.presabs)])] # vector of future models RDS for 1 spp
+  
+  future1<-terra::rast(future.spp[8]) # make RDS a raster
+  #plot(future1)
+  terra::crs(future1) <- rast.crs #assign crs to avoid warning
+  #plot(future1)
+  future1 <- terra::ifel(future1 ==1, 1, NA) # only the values of presence in the core area remain
+  
+  
+  boch.pres.cur <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =sample1)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
+                      ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( direction = -1,na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Current pres/abs", boch.lab))+
+    ggplot2::theme(legend.position = "none")
+  
+  boch.pres.fut<- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =future1)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
+                      ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Future pres/abs", boch.lab))+
+    ggplot2::theme(legend.position = "none")
+  
+  boch_pas_plots <- cowplot::plot_grid(boch.pres.cur, boch.pres.fut, nrow = 1)
+  ggplot2::ggsave(boch_pas_plots, filename = paste0("sample_boch_pas_plots.png") ,
+                  path = "plots/", units = "in", width = 8, height = 3.75, dpi = 300, bg = "white")
+  
+  
+  
+  
+  }
+  
+  
 
 #################
 #################
