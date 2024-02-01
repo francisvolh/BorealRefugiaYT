@@ -16,7 +16,11 @@ library(leaflet)
 
 #unique(class_spp$Migration1)
 
-df.spp.names.merged <- read.csv("data/df.all.birds.merged.csv", #stringsAsFactors = TRUE, 
+  #### 
+  #### CHSP, LISP, OCWA, TRES as short dist
+  #### 
+  
+df.spp.names.merged <- read.csv("data/df.all.birds.merged - CHSP LISP OCWA.csv", #stringsAsFactors = TRUE, 
                                 na.strings=c("NA","NaN", ""))
 
 
@@ -67,6 +71,7 @@ LDM.spp = c(LDM, rep(NA, max.len - length(LDM)))
 RES.spp = c(RES, rep(NA, max.len - length(RES)))
 cat.spp.df<-data.frame(SDM.spp, LDM.spp, RES.spp)
 #write.csv(cat.spp.df, "data/cat.spp.df.csv")
+num.spp <- c(length(RES), length(LDM), length(SDM))
 
 #load maps
 NA_CEC_Eco_Level2 <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/NA_Terrestrial_Ecoregions_v2_Level_II_Shapefile/NA_Terrestrial_Ecoregions_v2_level2.shp") #### new 2021 version HUGE SHAPEFILE
@@ -75,6 +80,10 @@ BCR4.1_USACAN<- NA_CEC_Eco_Level2|>
 
 BCR4.0_USACAN<- NA_CEC_Eco_Level2|>
    dplyr::filter(NameL2_En == "Boreal Cordillera")
+
+level3<- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/NA_Terrestrial_Ecoregions_v2_Level_III_Shapefile/NA_Terrestrial_Ecoregions_v2_level3.shp")
+
+
 
 
 #BCR4.1_USACAN<-sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.1_USACAN.shp")
@@ -118,7 +127,19 @@ terra::crs(NA_rast.crs) <- rast.crs
 rm(NAKey) 
 rm("Norm1991")
 
-#usa_can_crop <- sf::st_union(canada, USA) keep each country separate
+
+ecor_713 <- level3|>
+  dplyr::filter(LEVEL3 == "7.1.3")|>
+  sf::st_transform(rast.crs)
+
+eco_3.1 <- NA_CEC_Eco_Level2 |>
+  dplyr::filter(LEVEL2 == "3.1")|>
+  sf::st_transform(rast.crs)
+
+# area of eco 3.1 outside the previous rasters
+#eco31_out <- sf::st_difference(eco_3.1, usa_crop) 
+
+#usa_can_crop <- sf::st_union(canada, USA) # dont do this, keep each country separate
 
 usa_crop <- sf::st_transform(USA, rast.crs )
 
@@ -237,7 +258,8 @@ yukon <- canada_crop|>
   sf::st_transform(rast.crs)
 }
 ##########################################################################
-## for leaflet plotting only
+############ for leaflet plotting only
+#####
 shapeData1 <- sf::st_transform(BCR4.1_USACAN, "EPSG:4326")
 shapeData2 <- sf::st_transform(BCR4.0_USACAN, "EPSG:4326")
 
@@ -255,11 +277,11 @@ leaflet::leaflet()|>
 
 #  76a5a6d3-2a88-4129-a816-849bdbaebd56
 
+
 ################################################################################################
 ################################################################################################
-### 2) PRODUCE SUMMARY GRAPHS FOR CURRENT DISTRIBUTION, REFUGIA, SUITABILITY, 
-### and REFxSUIT scores (STACKED)
-### including calculation of high quality areas surface coverage of ecoregions and  PAs
+### 2) PRODUCE STACK GRAPHS FOR CURRENT SUITABILITY, REFUGIA, FUTURE SUITABILITY, and SUITABLE REFUCIA
+### including calculation of high value areas surface coverage of ecoregions and  PAs
 ### for GROUPING categories 
 #########################################################################
 {
@@ -272,7 +294,11 @@ leaflet::leaflet()|>
   pa_group_area_values <- NULL # df will hold PA values the p75 surface area values for each migra group per raster stack
   all.group.rasters<-NULL # list, will hold 3 lists, one per migra group (three cats), with 4 stacked raster each
   all.groups.sd.rasters<-NULL
+  stacks.mean.vals <- NULL
   high.pa.vals <- NULL
+  p75s<- NULL
+  startnum<-NULL
+  categoryCol <- NULL
   
   #loop for to run all groups
   begin.time <- Sys.time()
@@ -296,10 +322,9 @@ leaflet::leaflet()|>
     refxsuit.mean.list <- NULL# resets for each grouping run - k iteration in the loop
     
     print(paste("Processing", k, "species"))
-    
     for (i in c(group_spp)) {
-      
-      print(paste("Working", k, "current dist", i,"at", format(Sys.time(), "%X") ))
+      startnum[[i]]<-i
+      print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "current dist", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
       #load current distributions RDS
       rast1 <- readRDS(files.vect[grep(i, files.vect)] )
       Max95<-quantile(rast1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
@@ -313,15 +338,13 @@ leaflet::leaflet()|>
      
        rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
      
-
-
       rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
       #terra::crs(rast1) <- rast.crs # assign a crs to avoid warning
       curr.mean.list[[i]] <- rast1
       rm(rast1)
       
       
-      print(paste("Working", k, "refugia", i,"at", format(Sys.time(), "%X") ))
+      print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "refugia", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
       #loads the refugia rasters
       #rasters are sometimes tif or tiff, so the grep() solves it
       ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
@@ -330,13 +353,13 @@ leaflet::leaflet()|>
       rm(ref.ras1)
 
       
-      print(paste("Working", k, "future dist", i,"at", format(Sys.time(), "%X") ))
+      print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "future dist", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
       suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
       terra::crs(suit.ras1) <- rast.crs # assign CRS to avoid warning
       suit.mean.list[[i]] <- suit.ras1
       rm(suit.ras1)
       
-      print(paste("Working", k,"ref x future", i,"at", format(Sys.time(), "%X") ))
+      print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) ,"ref x future", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
       refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
       terra::crs(refxsuit.ras1) <- rast.crs # assign CRS to avoid warning
       refxsuit.mean.list[[i]] <- refxsuit.ras1
@@ -351,7 +374,7 @@ leaflet::leaflet()|>
     # for all RES, LDM, SDM did sum
     #for SDM also did average to compare that visually look the same, Diana agrees they are the same
     #par(mfrow = c(1,3))
-    print(paste("Working stacked",k, "current",format(Sys.time(), "%X") ))
+    print(paste("Working stacked",k, "current", format(Sys.time(), "%X") ))
     
     curr.sum <- terra::app(terra::rast(curr.mean.list), "sum")#/length(ref.mean.list)
     
@@ -376,11 +399,14 @@ leaflet::leaflet()|>
     #q75 <- quantile(terra::values(curr.sum.y), probs=c(0.75), na.rm=TRUE)
     
     #try the 75% of high values threshold
-    p75 <- max(terra::values(curr.sum.y), na.rm = TRUE) - max(terra::values(curr.sum.y), na.rm = TRUE)/4
+    p75 <- ceiling((.50*length(group_spp))) # always choose a whole number up (even if 0.1 over the integer)
+    #max(terra::values(curr.sum.y), na.rm = TRUE) - max(terra::values(curr.sum.y), na.rm = TRUE)/4
     curr.sum.test <- terra::ifel(curr.sum.y>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.curr <-sum(terra::values(curr.sum.test), na.rm = TRUE)
     
+
     #plot(curr.sum.test)
+    
     four_area_values<-NULL
     four_area_values <- cbind( four_area_values, area.curr)
     rm(area.curr)
@@ -390,6 +416,17 @@ leaflet::leaflet()|>
     ######
     #stack cropped to PAs only
     cropped_rast_yt <- terra::mask(curr.sum.y, yukon_PAs_crs)
+    
+    
+    sum.y.mean <-mean(terra::values(curr.sum.y), na.rm = TRUE)
+    sum.y.sd <-sd(terra::values(curr.sum.y), na.rm = TRUE)
+    sum.y.min <- min(terra::values(curr.sum.y), na.rm = TRUE)
+    sum.y.max <- max(terra::values(curr.sum.y), na.rm = TRUE)
+    sum.y.PAmean <-mean(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAsd <-sd(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAmin <- min(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
+    stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
     
     #use the same p75 of the overall ecoregion to calculate this high qual area
     area.cropped_rast_ytSDM <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
@@ -421,17 +458,30 @@ leaflet::leaflet()|>
     #q75 <- quantile(terra::values(ref.sum.y), probs=c(0.75), na.rm=TRUE)  
     
     #try the 75% of high values threshold
-    p75 <- max(terra::values(ref.sum.y), na.rm = TRUE) - max(terra::values(ref.sum.y), na.rm = TRUE)/4
+    #p75 <- max(terra::values(ref.sum.y), na.rm = TRUE) - max(terra::values(ref.sum.y), na.rm = TRUE)/4
   
     ref.sum.test <- terra::ifel( ref.sum.y >= p75 , 1 , NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     #plot(ref.sum.test)
     area.ref <-sum(terra::values(ref.sum.test), na.rm = TRUE)
+    
     four_area_values <- cbind( four_area_values, area.ref)
     rm(area.ref )
 
 
     #stack cropped to PAs only
     cropped_rast_yt <- terra::mask(ref.sum.y, yukon_PAs_crs)
+    
+    sum.y.mean <-mean(terra::values(ref.sum.y), na.rm = TRUE)
+    sum.y.sd <-sd(terra::values(ref.sum.y), na.rm = TRUE)
+    sum.y.min <- min(terra::values(ref.sum.y), na.rm = TRUE)
+    sum.y.max <- max(terra::values(ref.sum.y), na.rm = TRUE)
+
+    sum.y.PAmean <-mean(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAsd <-sd(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAmin <- min(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
+    stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
+    
     
     area.cropped_rast_ytREF <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.cropped_rast_ytREF <-sum(terra::values(area.cropped_rast_ytREF), na.rm = TRUE)
@@ -457,16 +507,28 @@ leaflet::leaflet()|>
     #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
     #q75 <- quantile(terra::values(suit.sum.y), probs=c(0.75), na.rm=TRUE)
     #try the 75% of high values threshold
-    p75 <- max(terra::values(suit.sum.y), na.rm = TRUE) - max(terra::values(suit.sum.y), na.rm = TRUE)/4
+    #p75 <- max(terra::values(suit.sum.y), na.rm = TRUE) - max(terra::values(suit.sum.y), na.rm = TRUE)/4
     
     suit.sum.test <- terra::ifel(suit.sum.y >=p75 , 1 , NA)
     #plot(suit.sum.test)
     area.suit <-sum(terra::values(suit.sum.test), na.rm = TRUE)
-   four_area_values <- cbind( four_area_values, area.suit)
-   rm( area.suit )
+    four_area_values <- cbind( four_area_values, area.suit)
+    rm( area.suit )
     
    #stack cropped to PAs only
    cropped_rast_yt <- terra::mask(suit.sum.y, yukon_PAs_crs)
+   
+   sum.y.mean <-mean(terra::values(suit.sum.y), na.rm = TRUE)
+   sum.y.sd <-sd(terra::values(suit.sum.y), na.rm = TRUE)
+   sum.y.min <- min(terra::values(suit.sum.y), na.rm = TRUE)
+   sum.y.max <- max(terra::values(suit.sum.y), na.rm = TRUE)
+   sum.y.PAmean <-mean(terra::values(cropped_rast_yt), na.rm = TRUE)
+   sum.y.PAsd <-sd(terra::values(cropped_rast_yt), na.rm = TRUE)
+   sum.y.PAmin <- min(terra::values(cropped_rast_yt), na.rm = TRUE)
+   sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
+   stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
+   
+   
    
    area.cropped_rast_ytSUIT <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
    area.cropped_rast_ytSUIT <-sum(terra::values(area.cropped_rast_ytSUIT), na.rm = TRUE)
@@ -490,7 +552,7 @@ leaflet::leaflet()|>
     
     
     #q75 <- quantile(terra::values(refxsuit.sum.y$sum), probs=c(0.75), na.rm=TRUE)
-    p75 <- max(terra::values(refxsuit.sum.y), na.rm = TRUE) - max(terra::values(refxsuit.sum.y), na.rm = TRUE)/4
+   # p75 <- max(terra::values(refxsuit.sum.y), na.rm = TRUE) - max(terra::values(refxsuit.sum.y), na.rm = TRUE)/4
     
     refxsuit.test <- terra::ifel( refxsuit.sum.y >= p75 , 1 , NA )
     area.refxsuit <-sum(terra::values(refxsuit.test), na.rm = TRUE)
@@ -500,19 +562,35 @@ leaflet::leaflet()|>
     #stack cropped to PAs only
     cropped_rast_yt <- terra::mask(refxsuit.sum.y, yukon_PAs_crs)
     
+    sum.y.mean <-mean(terra::values(refxsuit.sum.y), na.rm = TRUE)
+    sum.y.sd <-sd(terra::values(refxsuit.sum.y), na.rm = TRUE)
+    sum.y.min <- min(terra::values(refxsuit.sum.y), na.rm = TRUE)
+    sum.y.max <- max(terra::values(refxsuit.sum.y), na.rm = TRUE)
+    sum.y.PAmean <-mean(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAsd <-sd(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAmin <- min(terra::values(cropped_rast_yt), na.rm = TRUE)
+    sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
+    stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
+    
     area.cropped_rast_ytREFxSUIT <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.cropped_rast_ytREFxSUIT <-sum(terra::values(area.cropped_rast_ytREFxSUIT), na.rm = TRUE)
     
     PA_four_area_values <- cbind( PA_four_area_values, area.cropped_rast_ytREFxSUIT)
     
-
+    p75s <- cbind(p75s, p75)
+    
     #make sets of plots of only the 4 categories (curr, ref, suit, ref x suit) per species grouping (res, ldm, sdm)
     three.cats  <- list(curr.sum, ref.sum, suit.sum, refxsuit.sum) # list of sacked rasters for each group iteration TO PLOT
     
     four.sds.cats  <- list(curr.sd, ref.sd, suit.sd, refxsuit.sd)
     
     #need the names for ggplots, may ditch later for pub
-    three.cats.names  <- list(paste0(k,".current.sum"), paste0(k,".refugia.sum"),paste0(k,".future.sum"),paste0(k,".refugia x future.sum")) # list of names
+  
+    category <- c(paste0(k,".current.sum"), paste0(k,".refugia.sum"),paste0(k,".future.sum"),paste0(k,".refugia x future.sum")) # list of names
+    
+   
+    
+    categoryCol <- cbind(categoryCol, category)    
     
     
     
@@ -537,9 +615,20 @@ leaflet::leaflet()|>
 
 
   }# end of group loop
-} # end of calculation run
+  
+  
+  } # end of calculation run
 # Calculate percentages for surface of high quality areas over all ecoregion and YT Protected area system
 
+saved_means_stacks<-stacks.mean.vals
+
+stacks.mean.vals$category <- c(categoryCol[,1],categoryCol[,2] ,categoryCol[,3])
+
+#mean pixel value and descriptive stats per stack
+stacks.mean.vals|>
+  dplyr::mutate_at(1:length(stacks.mean.vals)-1, round, 2)|>
+  dplyr::select(category, sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax)
+  
 
 group_area_values
 pa_group_area_values
@@ -577,7 +666,7 @@ high.areas$Ref.Percent <- high.areas$Refugia/ as.numeric(area.bcr_for_calc)*100
 high.areas$Fut.Suitable.Perc <- high.areas$Fut.Suitable/ as.numeric(area.bcr_for_calc)*100
 high.areas$RefxFut.Perc <- high.areas$RefxFut.Suit/ as.numeric(area.bcr_for_calc)*100
 high.areas
-#write.csv(high.areas, "data/high.areas.csv")
+#write.csv(high.areas, "data/high.areasv2.csv")
 
 
 
@@ -606,7 +695,7 @@ high.pa.area$RefxFut.Perc <- high.pa.area$RefxFut.Suit/ as.numeric(area.for_calc
 
 high.pa.area$Pres.Percent <- high.pa.area$Present/ as.numeric(area.for_calc)*100
 high.pa.area$Pres.Percent_ECO <- high.pa.area$Present/ as.numeric(area.bcr_for_calc)*100
-high.pa.area$Pres.Dif_Percent_PAECO <- (high.pa.area$Present-high.areas$Present)/ high.areas$Present*100
+##high.pa.area$Pres.Dif_Percent_PAECO <- (high.pa.area$Present-high.areas$Present)/ high.areas$Present*100
 
 #high.pa.area$Ref.Percent <- high.pa.area$Refugia/ as.numeric(area.for_calc)*100
 #high.pa.area$Fut.Suitable.Perc <- high.pa.area$Fut.Suitable/ as.numeric(area.for_calc)*100
@@ -614,13 +703,14 @@ high.pa.area$Pres.Dif_Percent_PAECO <- (high.pa.area$Present-high.areas$Present)
 high.pa.area$RefxFut.Perc <- high.pa.area$RefxFut.Suit/ as.numeric(area.for_calc)*100
 high.pa.area$RefxFut.Perc_ECO <- high.pa.area$RefxFut.Suit/ as.numeric(area.bcr_for_calc)*100
 
-high.pa.area$RefxFut.Suit.Dif_Percent_PAECO <- (high.pa.area$RefxFut.Suit-high.areas$RefxFut.Suit)/ high.areas$RefxFut.Suit*100
+##high.pa.area$RefxFut.Suit.Dif_Percent_PAECO <- (high.pa.area$RefxFut.Suit-high.areas$RefxFut.Suit)/ high.areas$RefxFut.Suit*100
 
 
-high.pa.area
+
 print(high.areas)
-high.pa.area
-#write.csv(high.pa.area, "data/high.pa.area.csv")
+print(high.pa.area)
+
+#write.csv(high.pa.area, "data/high.pa.areav2.csv")
 
 }
 
@@ -634,114 +724,102 @@ high.pa.area
 
 #LOOP for plots of stacks 
 { begin.time <- Sys.time()
-    
-  rast.cat.names<- c("current.sum","refugia.sum","future.sum","refugia x future.sum")
-    group_plots<- NULL # list, will hold the  3 cowplots (of 4 plots) per migratory iteration, for plotting and saving at the end
-    
-    three.cat.list<- NULL # for the 3 plots of each iteration
-    #groupings_labs
+
+rast.cat.names<- c("Sum Current Suitable Habitat","Sum Refugia Probability","Sum Future Suitable Habitat","Sum Future Suitable Refugia")
+group_plots<- NULL # list, will hold the  3 cowplots (of 4 plots) per migratory iteration, for plotting and saving at the end
+
+three.cat.list<- NULL # for the 3 plots of each iteration
+#groupings_labs
+
+turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
+
 for (m in 1:length(all.group.rasters)) {
   
   three.cats <- all.group.rasters[[m]]
   
   print(paste("Plotting", groupings_labs[m]))
   
+  current<-three.cats[[1]]
+  
+  max.val <- max(terra::values(current), na.rm = TRUE)
+  min.val <- min(terra::values(current), na.rm = TRUE)
+  
   for (j in 1:length(three.cats)) {
     
     sum.raster <- three.cats[[j]]# a raster
     
-   # if (j == 1) {
-      
-      # truncate values for better viz FOR NOW DECIDED NOT TO DO IT WITH THE STACKS
-      #mean.val <- mean(terra::values(rast1), na.rm = TRUE)
-      #low.val<- min(terra::values(rast1), na.rm = TRUE)
-      #zmin <- max(mean.val, 0.001, na.rm = TRUE)
-      #zmin <- max(zmin, 0.01, na.rm = TRUE)
-      #zmax <- max(terra::values(rast1), na.rm = TRUE)
-      #q99 <- quantile(terra::values(rast1), probs=c(0.999), na.rm=TRUE)
-      
-      plot.one<-ggplot2::ggplot()+
-        ggplot2::geom_sf(data = poly, fill = "grey") +
-        ggplot2::geom_sf(data = usa_crop, fill = "white")+
-        ggplot2::geom_sf(data = canada_crop, fill = "white")+
-        tidyterra::geom_spatraster(data =sum.raster)+
-        ggplot2::geom_sf(data = usa_crop, alpha =0)+
-        ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-        ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                          ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                          expand = FALSE)+
-        ggplot2::theme_bw()+
-        ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-        ggplot2::theme(
-          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-        )+
-        #the following lines would be for a color scale of bird densities to truncate very low or very high abundances 
-        #ggplot2::scale_fill_gradientn(
-        #colors = c(
-        #"#F9FFAF", #low color
-        #hcl.colors(100, palette = "viridis", rev = TRUE), #use the viridis green color scale
-        # "#255668" #high color
-        #),
-        #values = scales::rescale(
-        #sort(c(range(terra::values(rast1), na.rm = TRUE), c(zmin, q99))),
-        #to = c(0, 1)
-      #),
-      # oob = scales::squish,#"squishes" values which fall outside of the limits into the range of the scale
-      #limits = c(zmin, q99) , na.value = "transparent" 
-      # This way the low values are assigned the low color and the high values the high color
-      
-      #)+
-      ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))#+
-      #ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[[j]],2)),
-      #                 x=(-2291000), 
-      #                y=( 1680000))+
-      #ggplot2::annotate("text", label=paste("High val areas rel to BCR", round((three.cats.vals[[j]]/as.numeric(area.bcr))*100,2), "%"),
-      #                 x=(-2291000), 
-      #                y=( 1630000))
-      
-      print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
-      
-  
-
+    # if (j == 1) {
+    
+    plot.one <-    ggplot2::ggplot()+
+      ggplot2::geom_sf(data = poly, fill = "grey") +
+      ggplot2::geom_sf(data = usa_crop, fill = "white")+
+      ggplot2::geom_sf(data = canada_crop, fill = "white")+
+      tidyterra::geom_spatraster(data =sum.raster)+
+      ggplot2::geom_sf(data = usa_crop, alpha =0)+
+      ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+      ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+      ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+      ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
+                        ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
+                        expand = FALSE)+
+      ggplot2::theme_bw()+
+      #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+      ggplot2::scale_fill_gradientn(
+        na.value = "transparent",
+        colors = c(
+          turbo_pal 
+        ),
+        values = scales::rescale(
+          sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
+          to = c(0, 1)
+        ),
+        oob = scales::squish,
+        limits = c(0, num.spp[m])
+      ) +
+      ggplot2::theme(
+        plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+      )+
+      ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))
+    
+    print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
+    
+    
+    
     three.cat.list[[j]] <- plot.one # lists the four plots per category
     
   }
-  print(paste("Grouping three sets plots", format(Sys.time(), "%X") ))
+  print(paste("Grouping three sets plots",groupings_labs[m], format(Sys.time(), "%X") ))
   
   #cowplot object with 4 maps of each migra group iteration 
   
   one_group_4plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 4 )
   ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plot",groupings_labs[m], ".png") ,
-                  path = "plots/", units = "in", width = 30, height = 6.5, dpi = 300, bg = "white")
-  print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
+                 path = "plots/", units = "in", width = 30, height = 6.5, dpi = 300, bg = "white")
+  print(paste("Saving plots to disk",groupings_labs[m], format(Sys.time(), "%X") ))
   
   group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 4 )
-  #rm(three.plots)
   
 } 
- 
 
-  
-  print(paste("Grouping all plots", format(Sys.time(), "%X") ))
-  
-   group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
-  
-  print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
-  
-  
-  ggplot2::ggsave(group_plots.png, filename = "group_plots.v14.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
-  end.time <- Sys.time()
-  print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-  
+
+
+print(paste("Grouping all plots", format(Sys.time(), "%X") ))
+
+group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
+
+print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
+
+ggplot2::ggsave(group_plots.png, filename = "group_plots.v15FORCED3.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
+end.time <- Sys.time()
+print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
+
 
 }
 
-
-
-## sets to plot only Current and Ref x Suit for presentation
-## 3 individual 1 x 2 panels 
+## ## ## ## ## ## ## ## ## ## 
+## ## ## ## ## ## ## ## ## ## 
+##  plot only Current and Ref x Suit for presentation
+## 3 individual 1 x 2 panels (and a final grouped 3 x 2)
 
 { begin.time <- Sys.time()
   
@@ -750,11 +828,19 @@ for (m in 1:length(all.group.rasters)) {
   three.cat.list<- NULL # for the 3 plots of each iteration
   #groupings_labs
   
+  rast.cat.names<- c("Sum Current Suitable Habitat","Sum Refugia Probability","Sum Future Suitable Habitat","Sum Future Suitable Refugia")
+  
+  turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
+  
   rast.cat.namesShort <-  rast.cat.names[c(1,4)]
   
   for (m in 1:length(all.group.rasters)) {
     
     three.cats <- all.group.rasters[[m]][c(1,4)]
+    current<-three.cats[[1]]
+    
+    max.val <- max(terra::values(current), na.rm = TRUE)
+    min.val <- min(terra::values(current), na.rm = TRUE)
     
     print(paste("Plotting", groupings_labs[m]))
     
@@ -770,13 +856,25 @@ for (m in 1:length(all.group.rasters)) {
         tidyterra::geom_spatraster(data =sum.raster)+
         ggplot2::geom_sf(data = usa_crop, alpha =0)+
         ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
         ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
                           ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
                           expand = FALSE)+
         ggplot2::theme_bw()+
-        ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+        #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+        ggplot2::scale_fill_gradientn(
+          na.value = "transparent",
+          colors = c(
+            turbo_pal 
+          ),
+          values = scales::rescale(
+            sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
+            to = c(0, 1)
+          ),
+          oob = scales::squish,
+          limits = c(0,  num.spp[m])
+        ) +
         ggplot2::theme(
           plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
         )+
@@ -792,8 +890,8 @@ for (m in 1:length(all.group.rasters)) {
     #cowplot object with 4 maps of each migra group iteration 
     
     one_group_4plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 2 )
-    ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plotSHORT",groupings_labs[m], ".png") ,
-                    path = "plots/", units = "in", width = 7.5, height = 3.75, dpi = 300, bg = "white")
+    #ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plotSHORTv3",groupings_labs[m], ".png") ,
+     #               path = "plots/", units = "in", width = 7.5, height = 3.75, dpi = 300, bg = "white")
     
     #group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 2 )
     #rm(three.plots)
@@ -816,86 +914,117 @@ for (m in 1:length(all.group.rasters)) {
   
 }
 
-########################################################################
-########################################################################
-# samples of BOCH and BCCH
-# Ref x Suit only ???
+## PAs version 2 (masking all out except whats inside the PAs, keep the scale, and set it along the 2 plots from current)
+## sets to plot only Current and Ref x Suit for presentation
+## 3 individual 1 x 2 panels 
 
-{boch.lab<- "BOCH"
-bcch.lab <- "BCCH"
+{ begin.time <- Sys.time()
+  ##Masked RASTER with PAs
+  maskedPATest <- terra::mask(  (all.group.rasters[[1]])[[4]] , yukon_PAs_crs  )
+  #terra::plot(maskedPATest)
+  #terra::plot(maskedPATest)
+  er <- terra::rast(terra::ext(maskedPATest), resolution=terra::res(maskedPATest), crs = rast.crs)
+  terra::values(er) <- 1
+  #terra::plot(er)
+  xx <- terra::ifel( maskedPATest > 0, NA, er ) # use this to cover the raster
+  #terra::plot(xx)
+  xxx <- terra::as.polygons(xx) #make a polygon out of the NAing raster for PAs
+  #terra::plot(xxx)
 
-refxsuit.boch <- terra::rast(x =  files.to.read[grep(paste0(boch.lab,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
-terra::crs(refxsuit.boch) <- rast.crs # assign CRS to avoid warning
+  sample_plot_list2<- NULL
+  
+  
+  turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
+  
+  rast.cat.namesShort <-  rast.cat.names[c(1,4)]
+  
+  for (m in 1:length(all.group.rasters)) {
+    
+    three.cats <- all.group.rasters[[m]][c(1,4)]
+    current<-three.cats[[1]]
+    
+    max.val <- max(terra::values(current), na.rm = TRUE)
+    min.val <- min(terra::values(current), na.rm = TRUE)
+    
+    print(paste("Plotting", groupings_labs[m]))
+    three.cat.list<-NULL
+    
+    for (j in 1:length(three.cats)) {
+      
+      sum.raster <- three.cats[[j]]# a raster
+      
+      plot.one<-ggplot2::ggplot()+
+        ggplot2::geom_sf(data = poly, fill = "grey") +
+        ggplot2::geom_sf(data = usa_crop, fill = "white")+
+        ggplot2::geom_sf(data = canada_crop, fill = "white")+
+        tidyterra::geom_spatraster(data =sum.raster)+
+        ggplot2::geom_sf(data = usa_crop, alpha =0)+
+        ggplot2::geom_sf(data = canada_crop, alpha =0)+
+        ggplot2::theme_bw()+
+        #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+        ggplot2::scale_fill_gradientn(
+          na.value = "transparent",
+          colors = c(
+            turbo_pal 
+          ),
+          values = scales::rescale(
+            sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
+            to = c(0, 1)
+          ),
+          oob = scales::squish,
+          limits = c(0,  num.spp[m])
+        ) +
+        tidyterra::geom_spatvector(
+          data = xxx, fill = "white"#ggplot2::aes(color = "white")
+        )+
+        ggplot2::geom_sf(data = yukon_PAs_crs, alpha = 0 )+
+        ggplot2::theme(
+          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+        )+
+        ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.namesShort[[j]]))+
+        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
+        ggplot2::geom_sf(data = usa_crop, alpha = 0)+
+        ggplot2::geom_sf(data = canada_crop, alpha = 0)+
+        ggplot2::coord_sf(xlim=c(terra::ext(xxx)[1], terra::ext(xxx)[2]),
+                          ylim = c(terra::ext(xxx)[3], terra::ext(xxx)[4]),
+                          expand = FALSE)
+      
+      print(paste("Plotting",groupings_labs[m], rast.cat.namesShort[[j]], format(Sys.time(), "%X") ))
+      
+      three.cat.list[[j]] <- plot.one # lists the four plots per category
+       
+    } 
+    
+    one.group.PAS <- cowplot::plot_grid(plotlist = three.cat.list, ncol = 2)
+    
+    ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_",groupings_labs[m],".png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
+   
+    print(paste("Grouping three sets plots", format(Sys.time(), "%X") ))
+    
+    sample_plot_list2[[m]]<-cowplot::plot_grid(plotlist = three.cat.list, ncol = 2)
+    
+  } 
+  
+  sample_plot_PAs_refxsuit <- cowplot::plot_grid(plotlist = sample_plot_list2, nrow = 3)
 
-refxsuit.boch <- terra::mask(refxsuit.boch, NA_rast.crs)
-refxsuit.boch <- terra::mask(refxsuit.boch, AKrast)
-refxsuit.boch.y <- terra::mask(refxsuit.boch, bcr[1])
-
-
-
-refxsuit.bcch <- terra::rast(x =  files.to.read[grep(paste0(bcch.lab,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
-terra::crs(refxsuit.bcch) <- rast.crs # assign CRS to avoid warning
-
-
-refxsuit.bcch <- terra::mask(refxsuit.bcch, NA_rast.crs)
-refxsuit.bcch <- terra::mask(refxsuit.bcch, AKrast)
-refxsuit.bcch.y <- terra::mask(refxsuit.bcch, bcr[1])
-
-
-
-boch.plot <- ggplot2::ggplot()+
-  ggplot2::geom_sf(data = poly, fill = "grey") +
-  ggplot2::geom_sf(data = usa_crop, fill = "white")+
-  ggplot2::geom_sf(data = canada_crop, fill = "white")+
-  tidyterra::geom_spatraster(data =refxsuit.boch)+
-  ggplot2::geom_sf(data = usa_crop, alpha =0)+
-  ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-  ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-  ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-  ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
-                    ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
-                    expand = FALSE)+
-  ggplot2::theme_bw()+
-  ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-  ggplot2::theme(
-    plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-  )+
-  ggplot2::ggtitle(paste("Suitable refugia for", boch.lab))
-
-bcch.plot <- ggplot2::ggplot()+
-  ggplot2::geom_sf(data = poly, fill = "grey") +
-  ggplot2::geom_sf(data = usa_crop, fill = "white")+
-  ggplot2::geom_sf(data = canada_crop, fill = "white")+
-  tidyterra::geom_spatraster(data =refxsuit.bcch)+
-  ggplot2::geom_sf(data = usa_crop, alpha =0)+
-  ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-  ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-  ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-  ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.bcch)[1], terra::ext(refxsuit.bcch)[2]),
-                    ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
-                    expand = FALSE)+
-  ggplot2::theme_bw()+
-  ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-  ggplot2::theme(
-    plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-  )+
-  ggplot2::ggtitle(paste("Suitable refugia for", bcch.lab))
-
-
-sample_boch_bcch <- cowplot::plot_grid(bcch.plot, boch.plot , labels = c("A", "B"
-), 
-#rel_widths = c(1.75, 2, 2),  
-nrow = 1
-)
-
-ggplot2::ggsave(sample_boch_bcch, filename = paste0("sample_boch_bcch.png") ,
-                path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
-
-
+  ggplot2::ggsave(sample_plot_PAs_refxsuit, filename = "sample_plot_PAs_refxsuitForcedv4.png", path = "plots/", units = "in", width = 15, height = 20, dpi = 300, bg = "white")
+  
+  end.time <- Sys.time()
+  
+  print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
+  
+  
 }
 
+#get one plot.one to just show alone
+#ggplot2::ggsave(plot.one, filename = "one_sample_plot_PAs_refxsuitv3.png", path = "plots/", units = "in", width = 7.5, height = 7.5, dpi = 300, bg = "white")
 
-########## Plot standard deviation (sd) of stacks
+
+
+
+
+########## Plot standard deviation (sd) of stacks maps
 ########## in one 3 x4 panel
 
 { begin.time <- Sys.time()
@@ -932,8 +1061,8 @@ ggplot2::ggsave(sample_boch_bcch, filename = paste0("sample_boch_bcch.png") ,
         tidyterra::geom_spatraster(data =sum.raster)+
         ggplot2::geom_sf(data = usa_crop, alpha =0)+
         ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
         ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
                           ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
                           expand = FALSE)+
@@ -986,6 +1115,155 @@ ggplot2::ggsave(sample_boch_bcch, filename = paste0("sample_boch_bcch.png") ,
 
 
 
+#########################  To share with larger team
+#########################  
+#########################  
+### 5) Plot INDIVIDUAL SPP current distributions, densities capped to maxq 95, or over total birds (proportion to standardize and stack groups)
+
+#files.vect <-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds/",  full.names = TRUE)
+
+{
+  begin.time <- Sys.time()
+  
+  #check color palette to assign highest colour correctly
+  #vir_pal <- c(viridis::viridis(n = 1000, direction = -1))
+  #find a darker shade of the darkest color in the palette
+  #darker<-colorspace::darken("#440154FF", 0.2)
+  #darker
+  
+  startnum<-NULL
+  the.birds <- (c(RES,LDM,SDM))
+  the.birds <- sort(the.birds) # for 1 ordered full spp plot
+  
+  NA_rast1 <-terra::crop(NA_rast,bird_rast)
+  AKrast1 <-terra::crop(AKrast,bird_rast)
+  
+  pixel.vals<-NULL
+  
+  all.plots<-NULL
+
+#loop for to run all groups
+for (k in groupings_labs) {
+  
+  #for one group
+  group_plots<- list()
+  
+  group_spp <- get(k)
+  
+  #for the all the species in the group 
+  for (i in c(group_spp)){
+    startnum[[i]]<-i
+    sample1 <- readRDS(files.vect[grep(i, files.vect)] )
+    rast1<-terra::rast(sample1)
+    rm(sample1)
+    rast1 <- rast1[[1]]
+    terra::crs(rast1) <- rast.crs
+    rast1 <-  terra::crop(rast1, NA_rast)
+    rast1 <- terra::mask(rast1, NA_rast.crs)#mask using NAs from env variables 
+    rast1 <- terra::mask(rast1, AKrast)
+    q95 <- quantile(terra::values(rast1), probs=c(0.95), na.rm=TRUE)
+    rast1 <-terra::ifel(rast1 >=q95, q95, rast1)
+    names(rast1) <- i
+
+    mean.val <- mean(terra::values(rast1), na.rm = TRUE)
+    max.val<- max(terra::values(rast1), na.rm = TRUE)
+    zmin <- max(mean.val, 0.001, na.rm = TRUE)
+    
+    if (zmin > mean.val) { # we use this specially for WIWR that had really low densities, even lower than 0.001 and if brakes the scale
+      zmin <- min(mean.val, 0.0001, na.rm = TRUE) # especially for WIWR, will assign a lower threshold 
+      if (zmin>mean.val) { # if even 0.0001 is higher than the mean value
+        print("Warning: Densities are too low") #this warning would only work with other birds, but not on ours
+      }
+    }else{zmin <- min(zmin, 0.01, na.rm = TRUE)
+}
+  
+    lowest <- min(terra::values(rast1), na.rm = TRUE)
+
+    q99 <- quantile(terra::values(rast1), probs=c(0.999), na.rm=TRUE) #after capping
+  
+    if (zmin<lowest) {
+      zmin <-lowest
+    } #when the low threshold assigned is lower than lowest value of the raster, it assigns just the lowest value
+    
+    pixel.vals <- rbind( pixel.vals, c(k, i, mean.val, lowest, max.val, zmin, q99))
+    
+    plot.onebird<-ggplot2::ggplot()+
+      ggplot2::geom_sf(data = poly, fill = "grey") +
+      ggplot2::geom_sf(data = usa_crop, fill = "white")+
+      ggplot2::geom_sf(data = canada_crop, fill = "white")+
+      tidyterra::geom_spatraster(data =rast1)+
+      ggplot2::geom_sf(data = usa_crop, alpha =0)+
+      ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+      ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+      ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+      ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
+                        ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
+                        expand = FALSE)+
+      ggplot2::theme_bw()+
+      #ggplot2:: scale_fill_viridis_c( direction = -1, na.value="transparent")+ ### IF NO SCALING for viz
+      ggplot2::scale_fill_gradientn(
+        colors = c(
+          "#F9FFAF",
+          hcl.colors(100, palette = "viridis", rev = TRUE),
+          "#2D0038FF"
+        ),
+        values = scales::rescale(
+          sort(c(range(terra::values(rast1)), c(zmin, q99))),
+          to = c(0, 1)
+        ),
+        oob = scales::squish,
+        limits = c(zmin, q99) , na.value = "transparent"
+      ) +
+      ggplot2::theme(
+        plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+      )+
+      ggplot2::ggtitle(names(rast1))
+    
+    
+    #print(paste(grep(i, the.birds),"out of", length(the.birds),", Plotting species:",i))
+    print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "density plot", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
+    
+    
+    group_plots[[i]] <- plot.onebird
+   all.plots[[i]]<-plot.onebird
+  }
+  
+  print(paste("Grouping plots", k,"in 1 frame", format(Sys.time(), "%X") ))
+  
+  one.group <-cowplot::plot_grid(plotlist = group_plots, ncol=4 )
+  
+  print(paste("Saving", k, "plots to disk", format(Sys.time(), "%X") ))
+  
+  ggplot2::ggsave(one.group, filename = (paste0(k,"_currDensv6.png")), path = "plots/", units = "in", width = 16, height=  3*ceiling(length(group_spp)/4), limitsize = FALSE, dpi = 300, bg = "white")
+  #no scaling plot excluded just used the raw values
+
+ 
+  }
+all.bird.plots <-cowplot::plot_grid(plotlist = all.plots, ncol=4 )
+
+ggplot2::ggsave(all.bird.plots, filename = (paste0("all_currDensv6.png")), path = "plots/", units = "in", width = 16, height=  3*ceiling(length(the.birds)/4), limitsize = FALSE, dpi = 300, bg = "white")
+
+  end.time <- Sys.time()
+  print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
+  
+}
+
+mean.val.df1<-data.frame(mean.val.df)
+zmin.df1<-data.frame(zmin.df)
+
+data.frame( spp=c(RES,LDM,SDM) ,x =c(mean.val.df), y = c(zmin.df) , z=c(mean.val.df)- c(zmin.df))
+
+pixel.vals.df<- as.data.frame(pixel.vals)
+names(pixel.vals.df) <- c("mig", "spp", "mean.val", "lowest", "max.val", "zmin", "q99")
+
+pixel.vals.df<-pixel.vals.df|>
+  dplyr::mutate_at(3:length(names(pixel.vals.df)), as.numeric)|>
+  dplyr::mutate_at(3:length(names(pixel.vals.df)), round, 7)
+
+write.csv(pixel.vals.df, "data/pixel.vals.df.csv")
+
+
+
 ############################################################## NOT NEEDED, need to revise if so
 ############################################################## especially change the Current dis stack plotting
 ##############################################################
@@ -999,495 +1277,156 @@ ggplot2::ggsave(sample_boch_bcch, filename = paste0("sample_boch_bcch.png") ,
 
 #files.vect <-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds/",  full.names = TRUE)
 
-  all.3.sets<-list()
+all.3.sets<-list()
+
+#loop for to run all groups
+for (k in groupings_labs) {
+  print(paste("Starting", k,"at", begin.time))
   
-  #loop for to run all groups
-  for (k in groupings_labs) {
-    print(paste("Starting", k,"at", begin.time))
+  group_plots<- list()### list of plots all spp 4 plots, for each category (to be saved with ggsave)
+  
+  group_spp <- get(k)
+  
+  #compile each set of graphs: ref, suit, ref x suit for all spp within a group (either LDM, SDM, or RES)
+  curr.mean.list <- list() # resets for each grouping run - k iteration in the loop
+  ref.mean.list <- list()
+  suit.mean.list <- list()
+  refxsuit.mean.list <- list()
+  
+  
+  all.spp.plot.names <-  list()
+  
+  #ref.ras1<-NULL
+  #suit.ras1<-NULL
+  #refxsuit.ras1<-NULL
+  
+  for (i in c(group_spp)) {
     
-    group_plots<- list()### list of plots all spp 4 plots, for each category (to be saved with ggsave)
-    
-    group_spp <- get(k)
-    
-    #compile each set of graphs: ref, suit, ref x suit for all spp within a group (either LDM, SDM, or RES)
-    curr.mean.list <- list() # resets for each grouping run - k iteration in the loop
-    ref.mean.list <- list()
-    suit.mean.list <- list()
-    refxsuit.mean.list <- list()
-    
-    
-    all.spp.plot.names <-  list()
-    
-    #ref.ras1<-NULL
-    #suit.ras1<-NULL
-    #refxsuit.ras1<-NULL
-    
-    for (i in c(group_spp)) {
-      
     #Load present RDS distribution files and make rasters 
-      print(paste("Working", k, "current dist", i,"at", format(Sys.time(), "%X") ))
-      
-      sample1 <- readRDS(files.vect[grep(i, files.vect)] )
-      ###################
-     
-      Max95<-quantile(sample1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
-      #q99 <- quantile(terra::values(curr.sum), probs=c(0.999), na.rm=TRUE)
-      
-      #suitscale<-suit/Max95  # scaled against present 95% max 
-      #values(suitscale)[values(suitscale) > 1] = 1  # assign areas that get more suitable (>1) to 1
-      ###################
-      ###################
-      rast1 <- sample1 |>
-        dplyr::mutate(
-          std.mean = Mean/Max95
-        )
-      
-      rast1<-terra::rast(rast1, crs =  rast.crs)  
-     
-      rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
-      
-      rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
-      
-      rast1 <-  terra::crop(rast1, NA_rast) # crop to the extent of the mask, only for current dists, because they are larger
-      rast1 <- terra::mask(rast1, NA_rast.crs) #mask using NAs from env variables 
-      rast1 <- terra::mask(rast1, AKrast) # mask for alaska
-      
-      names(rast1) <- i
-      
-      print(paste("Working", k, "refugia", i,"at", format(Sys.time(), "%X") ))
-      
-      #rasters are sometimes tif or tiff, so the grep() solves it
-      ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
-      names(ref.ras1)<-terra::varnames(ref.ras1)
-      ref.ras1 <- terra::mask(ref.ras1, NA_rast)#mask using NAs from env variables 
-      ref.ras1 <- terra::mask(ref.ras1, AKrast)
-      
-      
-      print(paste("Working", k, "future dist", i,"at", format(Sys.time(), "%X") ))
-      
-      suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
-      names(suit.ras1) <- terra::varnames(suit.ras1)
-      suit.ras1 <- terra::mask(suit.ras1, NA_rast)#mask using NAs from env variables 
-      suit.ras1 <- terra::mask(suit.ras1, AKrast)
-      
-      
-      print(paste("Working", k,"ref x future", i,"at", format(Sys.time(), "%X") ))
-      
-      refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
-      names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
-      refxsuit.ras1 <- terra::mask(refxsuit.ras1, NA_rast)#mask using NAs from env variables 
-      refxsuit.ras1 <- terra::mask(refxsuit.ras1, AKrast)
-      
+    print(paste("Working", k, "current dist", i,"at", format(Sys.time(), "%X") ))
     
-      curr.mean.list[[i]] <- rast1
-      ref.mean.list[[i]] <- ref.ras1
-      suit.mean.list[[i]] <- suit.ras1
-      refxsuit.mean.list[[i]] <- refxsuit.ras1
-      
-      #all.spp.plot.names[[i]] <- c(paste0(i,".refugia"),paste0(i,".suitability"),paste0(i,".refugia x suit"))
+    sample1 <- readRDS(files.vect[grep(i, files.vect)] )
+    ###################
     
-      }
+    Max95<-quantile(sample1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+    #q99 <- quantile(terra::values(curr.sum), probs=c(0.999), na.rm=TRUE)
     
-    for (j in 1:length(names(ref.mean.list))) {
-     
-      #call each species plot from the  category lists
-      current <- curr.mean.list[[j]]
-      refugia <- ref.mean.list[[j]] 
-      suitability <- suit.mean.list[[j]] 
-      refxsuit <- refxsuit.mean.list[[j]] 
+    #suitscale<-suit/Max95  # scaled against present 95% max 
+    #values(suitscale)[values(suitscale) > 1] = 1  # assign areas that get more suitable (>1) to 1
+    ###################
+    ###################
+    rast1 <- sample1 |>
+      dplyr::mutate(
+        std.mean = Mean/Max95
+      )
+    
+    rast1<-terra::rast(rast1, crs =  rast.crs)  
+    
+    rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
+    
+    rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
+    
+    rast1 <-  terra::crop(rast1, NA_rast) # crop to the extent of the mask, only for current dists, because they are larger
+    rast1 <- terra::mask(rast1, NA_rast.crs) #mask using NAs from env variables 
+    rast1 <- terra::mask(rast1, AKrast) # mask for alaska
+    
+    names(rast1) <- i
+    
+    print(paste("Working", k, "refugia", i,"at", format(Sys.time(), "%X") ))
+    
+    #rasters are sometimes tif or tiff, so the grep() solves it
+    ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
+    names(ref.ras1)<-terra::varnames(ref.ras1)
+    ref.ras1 <- terra::mask(ref.ras1, NA_rast)#mask using NAs from env variables 
+    ref.ras1 <- terra::mask(ref.ras1, AKrast)
+    
+    
+    print(paste("Working", k, "future dist", i,"at", format(Sys.time(), "%X") ))
+    
+    suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
+    names(suit.ras1) <- terra::varnames(suit.ras1)
+    suit.ras1 <- terra::mask(suit.ras1, NA_rast)#mask using NAs from env variables 
+    suit.ras1 <- terra::mask(suit.ras1, AKrast)
+    
+    
+    print(paste("Working", k,"ref x future", i,"at", format(Sys.time(), "%X") ))
+    
+    refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
+    names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
+    refxsuit.ras1 <- terra::mask(refxsuit.ras1, NA_rast)#mask using NAs from env variables 
+    refxsuit.ras1 <- terra::mask(refxsuit.ras1, AKrast)
+    
+    
+    curr.mean.list[[i]] <- rast1
+    ref.mean.list[[i]] <- ref.ras1
+    suit.mean.list[[i]] <- suit.ras1
+    refxsuit.mean.list[[i]] <- refxsuit.ras1
+    
+    #all.spp.plot.names[[i]] <- c(paste0(i,".refugia"),paste0(i,".suitability"),paste0(i,".refugia x suit"))
+    
+  }
+  
+  for (j in 1:length(names(ref.mean.list))) {
+    
+    #call each species plot from the  category lists
+    current <- curr.mean.list[[j]]
+    refugia <- ref.mean.list[[j]] 
+    suitability <- suit.mean.list[[j]] 
+    refxsuit <- refxsuit.mean.list[[j]] 
+    
+    setplots<-c("current", "refugia", "suitability", "refxsuit")
+    
+    one.spp.plot.cat.list<- list() # this will have the 4 plots for each species: a, b, c, d
+    for (t in setplots) { # do it for each element of the 4 lists (each species) 
       
-      setplots<-c("current", "refugia", "suitability", "refxsuit")
+      rast1<-get(t)
+      print(paste("Plotting", k, t, i,"at", format(Sys.time(), "%X") ))
       
-      one.spp.plot.cat.list<- list() # this will have the 4 plots for each species: a, b, c, d
-      for (t in setplots) { # do it for each element of the 4 lists (each species) 
-         
-        rast1<-get(t)
-        print(paste("Plotting", k, t, i,"at", format(Sys.time(), "%X") ))
-        
-         plot.one <- ggplot2::ggplot()+
-           ggplot2::geom_sf(data = poly, fill = "grey") +
-           ggplot2::geom_sf(data = usa_crop, fill = "white")+
-           ggplot2::geom_sf(data = canada_crop, fill = "white")+
-          tidyterra::geom_spatraster(data =rast1)+
-           ggplot2::geom_sf(data = usa_crop, alpha =0)+
-           ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-          ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-          ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-          ggplot2::coord_sf(xlim=c(terra::ext(rast1)[1], terra::ext(rast1)[2]),
-                            ylim = c(terra::ext(rast1)[3], terra::ext(rast1)[4]),
-                            expand = FALSE)+
-          ggplot2::theme_bw()+
-          ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
-          ggplot2::theme(
-            plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-          )+
-          ggplot2::ggtitle(names(rast1))
-        print(paste(j,"out of", length(names(ref.mean.list)),"Plotting", k, "species:",names(rast1)))
-         one.spp.plot.cat.list[[t]]<- plot.one
-         
-       }
+      plot.one <- ggplot2::ggplot()+
+        ggplot2::geom_sf(data = poly, fill = "grey") +
+        ggplot2::geom_sf(data = usa_crop, fill = "white")+
+        ggplot2::geom_sf(data = canada_crop, fill = "white")+
+        tidyterra::geom_spatraster(data =rast1)+
+        ggplot2::geom_sf(data = usa_crop, alpha =0)+
+        ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+        ggplot2::coord_sf(xlim=c(terra::ext(rast1)[1], terra::ext(rast1)[2]),
+                          ylim = c(terra::ext(rast1)[3], terra::ext(rast1)[4]),
+                          expand = FALSE)+
+        ggplot2::theme_bw()+
+        ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
+        ggplot2::theme(
+          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+        )+
+        ggplot2::ggtitle(names(rast1))
+      print(paste(j,"out of", length(names(ref.mean.list)),"Plotting", k, "species:",names(rast1)))
+      one.spp.plot.cat.list[[t]]<- plot.one
       
+    }
+    
     three.plots <- cowplot::plot_grid(plotlist = one.spp.plot.cat.list, nrow = 1, ncol = 4 )
     #ggsave(three.plots, filename = "SDM.sum.TERR.png", path = "plots/", units = "in", width = 10, height = 3, dpi = 300, bg = "white")
     
     group_plots[[j]]<- three.plots # one spp plots go into the list per migra group
-    } 
-    
+  } 
+  
   group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = length(names(ref.mean.list)), ncol = 1 ) # rows set to the whole number of plots for now, may want to figure out how to save in chunks once this works
   #maybe cow plot by chunks? 
-
-      #graph.rows <-  ceiling(length(list.bird.plots)/3) 
+  
+  #graph.rows <-  ceiling(length(list.bird.plots)/3) 
   
   ggplot2::ggsave(group_plots.png, filename = paste0(k,"_spp_plotsv3.png"), path = "plots/", units = "in", width = 16, height=  3*length(names(ref.mean.list)), limitsize = FALSE, dpi = 300, bg = "white")
   
   all.3.sets [[k]] <- group_plots.png
-   
-  }
   
-  end.time <- Sys.time()
-  
-  print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
 }
-
-
-
-
-#########################  NOT NEEDED , if so, need to revise a bit
-#########################  
-#########################  
-### 5) Plot INDIVIDUAL SPP current distributions, scaled as 0 and 1 only, or over total birds (proportion to standardize and stack groups)
-
-files.vect <-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds/",  full.names = TRUE)
-the.birds <- (c(RES,LDM,SDM))
-the.birds <- sort(the.birds)
-
-
-NA_rast1 <-terra::crop(NA_rast,bird_rast)
-AKrast1 <-terra::crop(AKrast,bird_rast)
-
-{
-list.rasters.curr <- list()
-begin.time <- Sys.time()
-for (i in the.birds) {
-  
-  sample1 <- readRDS(files.vect[grep(i, files.vect)] )
-  
-  sample1 <- sample1 |>
-    dplyr::mutate(
-      std.mean = Mean/max(Mean)
-    )
-  rast1<-terra::rast(sample1)
-  
-  rm(sample1)
-  rast1 <- rast1[[4]]
-  rast1 <-  terra::crop(rast1, NA_rast)
-  rast1 <- terra::mask(rast1, NA_rast)#mask using NAs from env variables 
-  rast1 <- terra::mask(rast1, AKrast)
-  names(rast1) <- i
-  
-  mean.val <- mean(terra::values(rast1), na.rm = TRUE)
-  low.val<- min(terra::values(rast1), na.rm = TRUE)
-  zmin <- max(mean.val, 0.001, na.rm = TRUE)
-  zmin <- max(zmin, 0.01, na.rm = TRUE)
-  zmax <- max(terra::values(rast1), na.rm = TRUE)
-  q99 <- quantile(terra::values(rast1), probs=c(0.999), na.rm=TRUE)
-  
-  plot.onebird<-ggplot2::ggplot()+
-    ggplot2::geom_sf(data = poly, fill = "grey") +
-    ggplot2::geom_sf(data = usa_crop, fill = "white")+
-    ggplot2::geom_sf(data = canada_crop, fill = "white")+
-    tidyterra::geom_spatraster(data =rast1)+
-    ggplot2::geom_sf(data = usa_crop, alpha =0)+
-    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-    ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
-                      ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
-                      expand = FALSE)+
-    ggplot2::theme_bw()+
-    #ggplot2:: scale_fill_viridis_c( direction = -1, na.value="transparent")+ ### DIANA's paper style?
-    scale_fill_gradientn(
-      colors = c(
-        "#F9FFAF",
-        hcl.colors(100, palette = "viridis", rev = TRUE),
-        "#255668"
-      ),
-      values = scales::rescale(
-        sort(c(range(terra::values(rast1)), c(zmin, q99))),
-        to = c(0, 1)
-      ),
-      oob = scales::squish,
-      limits = c(zmin, q99) , na.value = "transparent"
-    ) +
-    
-    ggplot2::theme(
-      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-    )+
-    ggplot2::ggtitle(names(rast1))
-  print(paste(grep(i, the.birds),"out of", length(the.birds),", Plotting species:",i))
-  
-  
-  list.rasters.curr[[i]] <- plot.onebird
-}
-
-print(paste("Grouping plots in 1 frame", format(Sys.time(), "%X") ))
-
-all_birds_curr <-cowplot::plot_grid(plotlist = list.rasters.curr, ncol=4 )
-
-print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
-
-ggsave(all_birds_curr, filename = ("all_birds_currv3.png"), path = "plots/", units = "in", width = 16, height=  3*ceiling(length(the.birds)/4), limitsize = FALSE, dpi = 300, bg = "white")
 
 end.time <- Sys.time()
+
 print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-
 }
 
 
 
-
-#########################  NOT NEEDED , if so, need to revise a bit
-#########################  
-#########################  
-### 6) PRODUCE SUMMARY GRAPHS FOR REFUGIA, SUITABILITY, and REFxSUIT scores
-# for GROUPING categories (STACKED not including CURRENT DISTRIBUTIONS)
-######
-
-#Curent loop runs over all predefined groups
-{
-  begin.time <- Sys.time()
-  
-  group_plots<- list()
-  
-  #loop for to run all groups
-  for (k in groupings_labs) {
-    
-    #for one group
-    
-    group_spp <- get(k)
-    
-    ref.mean.list <- list()
-    suit.mean.list <- list()
-    refxsuit.mean.list <-  list()
-    
-    ref.ras1<-NULL
-    suit.ras1<-NULL
-    refxsuit.ras1<-NULL
-    
-    for (i in c(group_spp)) {
-      
-      #rasters are sometimes tif or tiff, so the grep() solves it
-      ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
-      name1<-terra::varnames(ref.ras1)
-      ref.ras1 <- terra::mask(ref.ras1, NA_rast)#mask using NAs from env variables 
-      ref.ras1 <- terra::mask(ref.ras1, AKrast)
-      
-      terra::varnames(ref.ras1)<-name1
-      suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
-      suit.ras1 <- terra::mask(suit.ras1, NA_rast)#mask using NAs from env variables 
-      suit.ras1 <- terra::mask(suit.ras1, AKrast)
-      
-      
-      refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
-      refxsuit.ras1 <- terra::mask(refxsuit.ras1, NA_rast)#mask using NAs from env variables 
-      refxsuit.ras1 <- terra::mask(refxsuit.ras1, AKrast)
-      
-      names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
-      names(suit.ras1) <- terra::varnames(suit.ras1)
-      
-      ref.mean.list[[i]] <- ref.ras1
-      suit.mean.list[[i]] <- suit.ras1
-      refxsuit.mean.list[[i]] <- refxsuit.ras1
-      
-    }
-    
-    
-    # for all RES, LDM, SDM did sum
-    #for SDM also did average to compare that visually look the same, Diana agrees they are the same
-    
-    ref.sum <- terra::app(terra::rast(ref.mean.list), "sum")#/length(ref.mean.list)
-    #assign(paste0(k,"ref.sum"), ref.sum) #rename object according to loop cycle (spp grouping)
-    
-    ################attempt to estimate area size of 75% refugia index
-    #### incorporate into graphs--- rather than print()
-    # ref.sum.val75 <- max(terra::values(ref.sum), na.rm = TRUE)-max(terra::values(ref.sum), na.rm = TRUE)/4
-    
-    #  ref.sum.test <- ifelse(ref.sum[]>=ref.sum.val75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
-    # area.ref <-sum(ref.sum.test, na.rm = TRUE)
-    
-    #this should be the same as below, with cellSize
-    
-    #print(paste("area greater than 0.75.=",round(area.ref,2), "km^2"))
-    #print(paste("Percentage relative to BCR4.0-4.1 is", round((area.ref/as.numeric(area.bcr))*100,2), "%"))
-    
-    ###################################### using cell size does work, and it may be more precise #########################
-    #ref.sum.75.crs <- ref.sum
-    #terra::crs(ref.sum.75.crs) <- rast.crs 
-    
-    #ref.sum.75.crs[ref.sum.75.crs[]<ref.sum.val75]<-NA
-    
-    #cell_size<-terra::cellSize(ref.sum.75.crs, 
-    #                 unit = "km", #transform=TRUE
-    #                 mask = TRUE )
-    #b_sum <- terra::global(cell_size, fun = "sum", na.rm = TRUE)
-    
-    #######terra::expanse(ref.sum.75.crs, unit = "km") 
-    ## using expanse after making the NA below the threshold
-    #would yield the same but would need more time to compute, x9 times more time
-    
-    ################################################################################################################## 
-    
-    
-    suit.sum <- terra::app(terra::rast(suit.mean.list), "sum")#/length(suit.mean.list)
-    #assign(paste0(k,"suit.sum"), suit.sum)
-    
-    
-    
-    refxsuit.sum <- terra::app(terra::rast(refxsuit.mean.list), "sum")#/length(refxsuit.mean.list)
-    #assign(paste0(k,"refxsuit.sum"), refxsuit.sum)
-    #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
-    
-    
-    #make sets of plots of only the 3 categories (ref, suit, ref x suit) per species grouping (res, ldm, sdm)
-    three.cats  <- c(ref.sum, suit.sum, refxsuit.sum)
-    
-    
-    three.cats.names  <- c(paste0(k,".refugia.sum"),paste0(k,".suitability.sum"),paste0(k,".refugia x suit.sum"))
-    
-    three.cats.vals <- c(area.ref,area.suit, area.refxsuit )
-    
-    three.cat.list<- list()
-    for (j in 1:length(names(three.cats))) {
-      
-      rast1 <- three.cats[[j]]
-      
-      plot.one <- ggplot()+
-        geom_sf(data = poly, fill = "grey") +
-        geom_sf(data = usa_crop, fill = "white")+
-        geom_sf(data = canada_crop, fill = "white")+
-        tidyterra::geom_spatraster(data =rast1)+
-        geom_sf(data = usa_crop, alpha =0)+
-        geom_sf(data = canada_crop, alpha =0)+       
-        ggplot2::geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.1 ,color = "black", fill = "blue", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1. ,color = "black", fill = "red", alpha = 0)+
-        ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                          ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                          expand = FALSE)+
-        #scale_fill_terrain_c()+ ###WORKS! may be best because of white color on zeros,   na.value = NA not doing anything in this 
-        #scale_fill_distiller()+
-        #scale_fill_binned(type = "viridis")
-        #scale_fill_continuous(type = "viridis")+
-        #scale_fill_gradient(low="red", high="green")+
-        ggplot2::theme_bw()+
-        ggplot2::ggtitle(three.cats.names[[j]])+
-        ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
-        ggplot2::theme(
-          plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
-        )#+
-      #ggplot2::annotate("text", label=paste("High val area ", round(three.cats.vals[j],2)),
-      #                 x=(-2291000), 
-      #                y=( 1680000))+
-      #ggplot2::annotate("text", label=paste("High val areas rel to BCR", round((three.cats.vals[j]/as.numeric(area.bcr))*100,2), "%"),
-      #                 x=(-2291000), 
-      #                y=( 1630000))
-      
-      three.cat.list[[j]] <- plot.one
-      
-    }
-    
-    three.plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 3 )
-    #print(three.plots)
-    #ggsave(three.plots, filename = "SDM.sum.TERR.png", path = "plots/", units = "in", width = 10, height = 3, dpi = 300, bg = "white")
-    
-    group_plots[[k]]<- three.plots
-  }
-  
-  group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
-  
-  # ggsave(group_plots.png, filename = "group_plots.v6.png", path = "plots/", units = "in", width = 22, height = 20, dpi = 300, bg = "white")
-  
-  
-  end.time <- Sys.time()
-  
-  print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-}
-
-group_plots.png
-
-
-
-##############################################################
-##############################################################
-### ONE plot only of the set of ref, or suit, or ref x suit FOR TESTING ONLY
-plot.sum<- ggplot()+
-  geom_spatraster(data =SDM.ref.sum)+
-  #geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
-  geom_sf(data = BCR4.1_USACAN, aes(), linewidth=1.5 ,color = "black", fill = "blue", alpha = 0)+
-  geom_sf(data = BCR4.0_USACAN, aes(), linewidth=1.5 ,color = "black", fill = "red", alpha = 0)+
-  coord_sf(xlim=c(ext(RES.ref.sum)[1], ext(RES.ref.sum)[2]),
-           ylim = c(ext(RES.ref.sum)[3], ext(RES.ref.sum)[4]),
-           expand = FALSE)+
-  #scale_fill_terrain_c()+ ###WORKS! may be best because of white color on zeros,   na.value = NA not doing anything in this 
-  #scale_fill_distiller()+
-  #scale_fill_binned(type = "viridis")
-  #scale_fill_continuous(type = "viridis")+
-  #scale_fill_gradient(low="red", high="green")+
-  theme_bw()+
-  ggtitle("Sum SDM Birds")+
-  scale_fill_viridis_c(option = "turbo", direction = -1)+ ### DIANA's paper style?
-  theme(
-    plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
-  )
-
-#################################################################################
-#################### additional code to look at stuff######################
-sample.birds.rast <- rast(file.choose())
-
-crs(sample.birds.rast)<-crs(usa_can_crop)
-
-usa_can_crop <- st_crop(usa_can_crop, sample.birds.rast)
-
-ggplot()+
-  geom_spatraster(data =sample.birds.rast)+
-  scale_colour_viridis_c(na.value = NA)+
-  geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
-  geom_sf(data = BCR4.1_USACAN, aes(), linewidth=2 ,color = "red", fill = "blue", alpha = 0)+
-  geom_sf(data = BCR4.0_USACAN, aes(), linewidth=2 ,color = "red", fill = "red", alpha = 0)+
-  coord_sf(xlim=c(ext(sample.birds.rast)[1], ext(sample.birds.rast)[2]),
-           ylim = c(ext(sample.birds.rast)[3], ext(sample.birds.rast)[4]),
-           expand = FALSE)+
-  scale_fill_terrain_c(na.value = NA)+
-  theme(
-    plot.margin = margin(0,0,0,0, "cm")
-  )+
-  theme_bw()
-
-#viridis paletes
-#"magma" (or "A")
-#"inferno" (or "B")
-#"plasma" (or "C")
-#"viridis" (or "D")
-#"cividis" (or "E")
-#"rocket" (or "F")
-#"mako" (or "G")
-#"turbo" (or "H")
-
-ggplot()+
-  geom_spatraster(data =sample.birds.rast)+
-  geom_sf(data = usa_can_crop , aes(), fill = "green", alpha = 0)+
-  geom_sf(data = BCR4.1_USACAN, aes(), linewidth=2 ,color = "red", fill = "blue", alpha = 0)+
-  geom_sf(data = BCR4.0_USACAN, aes(), linewidth=2 ,color = "red", fill = "red", alpha = 0)+
-  coord_sf(xlim=c(ext(sample.birds.rast)[1], ext(sample.birds.rast)[2]),
-           ylim = c(ext(sample.birds.rast)[3], ext(sample.birds.rast)[4]),
-           expand = FALSE)+
-  #scale_fill_terrain_c()+ ###WORKS! may be best because of white color on zeros,   na.value = NA not doing anything in this 
-  #scale_fill_distiller()+
-  #scale_fill_binned(type = "viridis")
-  #scale_fill_continuous(type = "viridis")+
-  #scale_fill_gradient(low="red", high="green")+
-  theme_bw()+
-  scale_fill_viridis_c(option = "turbo")+ ### DIANA's paper style?
-  theme(
-    plot.margin = margin(0.1,0.1,0.1,0.1, "cm")
-  )
 
