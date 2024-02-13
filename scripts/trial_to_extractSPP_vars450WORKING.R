@@ -292,10 +292,6 @@ all_means_diffs.df<-all_means_diffs.df|>
   tibble::as_tibble()
 
 
-
-### FIX THIS@@@@@@@@@@@@@@@@@@@@
-
-
 #means for current and future with CI and attach the DELTA elevation and CIs
 test.wide.table <- 
   current.means.df1|>
