@@ -206,6 +206,15 @@ bcr <- BCR4.1_4.0[1]
 bcr <- sf::st_as_sf(bcr)
 bcr <- sf::st_transform(bcr, crs =rast.crs) # shapefile of the 2 ecoregions of interest
 
+
+taigacord.crs<- NA_CEC_Eco_Level2|>
+  dplyr::filter(NameL2_En == "Taiga Cordillera")|>
+  sf::st_transform(rast.crs)
+
+borealcord.crs<- NA_CEC_Eco_Level2|>
+  dplyr::filter(NameL2_En == "Boreal Cordillera")|>
+  sf::st_transform(rast.crs)
+
 #area.bcr
 ###
 
@@ -1123,6 +1132,13 @@ print(paste("total duration of plotting", round(difftime(end.time,begin.time, un
 #files.vect <-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds/",  full.names = TRUE)
 
 {
+  
+  Mode <- function(x) {
+    x<-x[!is.na(x)]
+    ux <- unique(x)
+    ux[which.max(tabulate(match(x, ux)))]
+  }
+  
   begin.time <- Sys.time()
   
   #check color palette to assign highest colour correctly
@@ -1166,6 +1182,10 @@ for (k in groupings_labs) {
     names(rast1) <- i
 
     mean.val <- mean(terra::values(rast1), na.rm = TRUE)
+    median.val <- median(terra::values(rast1), na.rm = TRUE)
+    
+    mode.val <- Mode(terra::values(rast1))
+    
     max.val<- max(terra::values(rast1), na.rm = TRUE)
     zmin <- max(mean.val, 0.001, na.rm = TRUE)
     
@@ -1180,52 +1200,15 @@ for (k in groupings_labs) {
     lowest <- min(terra::values(rast1), na.rm = TRUE)
 
     q99 <- quantile(terra::values(rast1), probs=c(0.999), na.rm=TRUE) #after capping
-  
+    q90 <- quantile(terra::values(rast1), probs=c(0.9), na.rm=TRUE) #after capping
+    
     if (zmin<lowest) {
       zmin <-lowest
     } #when the low threshold assigned is lower than lowest value of the raster, it assigns just the lowest value
     
-    pixel.vals <- rbind( pixel.vals, c(k, i, mean.val, lowest, max.val, zmin, q99))
+    pixel.vals <- rbind( pixel.vals, c(k, i, mean.val, median.val, lowest, max.val, zmin, q90, q99))
     
-    plot.onebird<-ggplot2::ggplot()+
-      ggplot2::geom_sf(data = poly, fill = "grey") +
-      ggplot2::geom_sf(data = usa_crop, fill = "white")+
-      ggplot2::geom_sf(data = canada_crop, fill = "white")+
-      tidyterra::geom_spatraster(data =rast1)+
-      ggplot2::geom_sf(data = usa_crop, alpha =0)+
-      ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-      ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-      ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-      ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
-                        ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
-                        expand = FALSE)+
-      ggplot2::theme_bw()+
-      #ggplot2:: scale_fill_viridis_c( direction = -1, na.value="transparent")+ ### IF NO SCALING for viz
-      ggplot2::scale_fill_gradientn(
-        colors = c(
-          "#F9FFAF",
-          hcl.colors(100, palette = "viridis", rev = TRUE),
-          "#2D0038FF"
-        ),
-        values = scales::rescale(
-          sort(c(range(terra::values(rast1)), c(zmin, q99))),
-          to = c(0, 1)
-        ),
-        oob = scales::squish,
-        limits = c(zmin, q99) , na.value = "transparent"
-      ) +
-      ggplot2::theme(
-        plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-      )+
-      ggplot2::ggtitle(names(rast1))
-    
-    
-    #print(paste(grep(i, the.birds),"out of", length(the.birds),", Plotting species:",i))
-    print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "density plot", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
-    
-    
-    group_plots[[i]] <- plot.onebird
-   all.plots[[i]]<-plot.onebird
+   
   }
   
   print(paste("Grouping plots", k,"in 1 frame", format(Sys.time(), "%X") ))
@@ -1248,13 +1231,9 @@ ggplot2::ggsave(all.bird.plots, filename = (paste0("all_currDensv6.png")), path 
   
 }
 
-mean.val.df1<-data.frame(mean.val.df)
-zmin.df1<-data.frame(zmin.df)
-
-data.frame( spp=c(RES,LDM,SDM) ,x =c(mean.val.df), y = c(zmin.df) , z=c(mean.val.df)- c(zmin.df))
 
 pixel.vals.df<- as.data.frame(pixel.vals)
-names(pixel.vals.df) <- c("mig", "spp", "mean.val", "lowest", "max.val", "zmin", "q99")
+names(pixel.vals.df) <- c("mig", "spp", "mean.val","median", "lowest", "max.val", "zmin","q90", "q99")
 
 pixel.vals.df<-pixel.vals.df|>
   dplyr::mutate_at(3:length(names(pixel.vals.df)), as.numeric)|>
