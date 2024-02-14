@@ -12,7 +12,9 @@
   current.means.df1 <- readRDS("data/current.means.df1.RDS")
   
   # filter out the birds already done
-  all.done <-unique(current.means.df1$Species)
+  #alldonedf<-read.csv("data/test.wide.tablerun2.csv")
+  
+  all.done <-unique(alldonedf$Species)
   begin.time <- Sys.time()
   
   onebirdcur <- readRDS("data/YT Boreal Refugia Drive/bootstrapped rasters/AMRO_CurrentCores.rds")
@@ -98,7 +100,7 @@
   current.means.df<-NULL
   
   #filter our birds done already
-  groupings<-setdiff(groupings, all.done)
+  #groupings<-setdiff(groupings, all.done)
   
 
   
@@ -332,8 +334,4 @@ test.wide.table <-
    "d_Elev.tai.upr" = "upr975.tai"
   )
 
-#write.csv(test.wide.table, "data/test.wide.tablerun2.csv")
-
-
-current.means.df1|>
-  dplyr::filter(Species == "YBSA")
+#write.csv(df, "data/test.wide.tablerun2.csv")
