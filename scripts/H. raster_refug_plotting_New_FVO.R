@@ -97,7 +97,7 @@ files.vect <-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90C
 
 #set refugia raster results directory
 #the file list
-files.to.read<-list.files("data/YT Boreal Refugia Drive/Jan2024_Rasters_1991_Normal_Refugia and Habitat Suitability/1991_Refugia_Suitabiltiy_Rasters_MEAN/", full.names = TRUE)
+files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/BootstrapRasters", full.names = TRUE)
 
 #for increasing decreasing population -- WHEN NEEDED, not yet
 #files.future <- list.files("data/YT Boreal Refugia Drive/Files_1991_Future_Mean90CI_rds", full.names = TRUE )
@@ -117,7 +117,8 @@ NA_rast <-NA_rast[[1]]
 
 NA_rast <- terra::ifel(is.na(NA_rast), NA, 1) # NA are ocean and high climate modeled values (nonsensical)
 #load a bird refugia raster
-bird_rast <- terra::rast("data/YT Boreal Refugia Drive/Jan2024_Rasters_1991_Normal_Refugia and Habitat Suitability/1991_Refugia_Suitabiltiy_Rasters_MEAN/ALFL_Refugia_RCPmean.tif")
+"data/YT Boreal Refugia Drive/bootstrapped rasters/BootstrapRasters"
+bird_rast <- terra::rast("data/YT Boreal Refugia Drive/bootstrapped rasters/BootstrapRasters/ALFL_FutureRef.tif")
 terra::crs(bird_rast)<-rast.crs
 NA_rast <-terra::crop(NA_rast,bird_rast)
 
@@ -293,14 +294,32 @@ leaflet::leaflet()|>
 ### including calculation of high value areas surface coverage of ecoregions and  PAs
 ### for GROUPING categories 
 #########################################################################
-{
-#Curent loop runs over all predefined groups
+decreasers <- c("ATTW","GRAJ","BOCH","ATSP","WCSP","SAVS", "MOBL", "FOSP","OCWA","BLPW","WIWA","GCTH")
+increasers <- c("RBNU","CORA","HAWO","BCCH","LISP","NOFL","WIWR","VATH","GCKI","YBSA","CHSP",
+                "COYE" ,"WEWP" ,"YRWA" ,"SWTH" ,"NOWA" ,"YEWA" ,"LEFL" ,"ALFL" ,"HAFL" ,"WETA" ,"TEWA" ,"WAVI")
+no_change <- setdiff(groupings,decreasers)
+no_change <- setdiff(no_change,increasers)
+
+
+
+groupings_labs <- c("decreasers","increasers", "no_change")
+
+{ 
+qs <-  c(0.25, 0.50, 0.75)
+
+  for (q in qs) { ### need to clean the code not to stack 3 times for no reason (because of the quantiles!!!!!!)
+    #carefully move the DFs that will save values
+    #need to save all the same values?? maybe not? REVISE which ones you need to keep or save if now the 3 qs are being run????
+    
+    quant<- q
+  
+  #Curent loop runs over all predefined groups
 #par(mfrow = c(3,2))
 
   
   
   group_area_values<- NULL # dataframe, will hold the q75 surface area values for each migratory group, per raster stack 
-  pa_group_area_values <- NULL # df will hold PA values the p75 surface area values for each migra group per raster stack
+  pa_group_area_values <- NULL # df will hold PA values the q75 surface area values for each migra group per raster stack
   all.group.rasters<-NULL # list, will hold 3 lists, one per migra group (three cats), with 4 stacked raster each
   all.groups.sd.rasters<-NULL
   stacks.mean.vals <- NULL
@@ -317,6 +336,13 @@ leaflet::leaflet()|>
     
     group_spp <- get(k)
     
+    
+    ##############
+    #group_spp<-setdiff(group_spp,"WIWR")
+    ###########
+    
+    
+    
     three.cats <- NULL# resets in each grouping run, will hold the 4 rasters per migra group 
     #three.cats.vals <- NULL # not needed anymore, just throw directly into the group_area_values list
     three.cats.names <- NULL# resets in each grouping run, will hold the 4 rasters Names per migra group
@@ -332,44 +358,51 @@ leaflet::leaflet()|>
     
     print(paste("Processing", k, "species"))
     for (i in c(group_spp)) {
+      
       startnum[[i]]<-i
       print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "current dist", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
+      
+      # we dont do this anymore, but use the cropped ecoregion new rasters
       #load current distributions RDS
-      rast1 <- readRDS(files.vect[grep(i, files.vect)] )
-      Max95<-quantile(rast1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+      #rast1 <- readRDS(files.vect[grep(i, files.vect)] )
+      #Max95<-quantile(rast1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
       
-      rast1 <- rast1 |>
-        dplyr::mutate(
-          std.mean = Mean/Max95
-        )
+      #rast1 <- rast1 |>
+       # dplyr::mutate(
+        #  std.mean = Mean/Max95
+        #)
       
-      rast1<-terra::rast(rast1, crs =  rast.crs)  
+      #rast1<-terra::rast(rast1, crs =  rast.crs)  
      
-       rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
+       #rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
      
-      rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
+      #rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
       #terra::crs(rast1) <- rast.crs # assign a crs to avoid warning
+      
+      #rm(rast1)
+      
+      rast1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","PresentSuit.tif"), files.to.read)])
+      terra::crs(rast1) <- rast.crs # assign crs to avoid warning
       curr.mean.list[[i]] <- rast1
       rm(rast1)
-      
       
       print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "refugia", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
       #loads the refugia rasters
       #rasters are sometimes tif or tiff, so the grep() solves it
-      ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
+      ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","FutureRef.tif"), files.to.read)])
       terra::crs(ref.ras1) <- rast.crs # assign crs to avoid warning
       ref.mean.list[[i]] <- ref.ras1
       rm(ref.ras1)
 
       
       print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "future dist", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
-      suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
+      suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"_","FutureSuit.tif"), files.to.read)])
       terra::crs(suit.ras1) <- rast.crs # assign CRS to avoid warning
       suit.mean.list[[i]] <- suit.ras1
       rm(suit.ras1)
       
       print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) ,"ref x future", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
-      refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
+      refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"_","FutureSuit_by_Ref.tif"), files.to.read)])
       terra::crs(refxsuit.ras1) <- rast.crs # assign CRS to avoid warning
       refxsuit.mean.list[[i]] <- refxsuit.ras1
       rm(refxsuit.ras1)
@@ -387,30 +420,29 @@ leaflet::leaflet()|>
     
     curr.sum <- terra::app(terra::rast(curr.mean.list), "sum")#/length(ref.mean.list)
     
-
-      
     terra::crs(curr.sum) <- rast.crs
     
-    curr.sum <- terra::crop(curr.sum, NA_rast.crs)
-    curr.sum <- terra::mask(curr.sum, NA_rast.crs)
+    #curr.sum <- terra::crop(curr.sum, NA_rast.crs)
+    #curr.sum <- terra::mask(curr.sum, NA_rast.crs)
     
-    curr.sum <- terra::mask(curr.sum, AKrast)
-    curr.sum.y <- terra::mask(curr.sum, bcr[1])
+    #curr.sum <- terra::mask(curr.sum, AKrast)
+    #curr.sum.y <- terra::mask(curr.sum, bcr[1])
+    curr.sum.y <-curr.sum #lazy solution to not change all the names below
     
     curr.sd <- terra::app(terra::rast(curr.mean.list), "sd")#/length(ref.mean.list)
-    curr.sd <- terra::crop(curr.sd, NA_rast.crs)
-    curr.sd <- terra::mask(curr.sd, NA_rast.crs)
+    #curr.sd <- terra::crop(curr.sd, NA_rast.crs)
+    #curr.sd <- terra::mask(curr.sd, NA_rast.crs)
     
-    curr.sd <- terra::mask(curr.sd, AKrast)
+    #curr.sd <- terra::mask(curr.sd, AKrast)
     
     
     # quantile may always be selecting the same number of cells???????
-    #q75 <- quantile(terra::values(curr.sum.y), probs=c(0.75), na.rm=TRUE)
+    q75 <- quantile(terra::values(curr.sum.y), probs=c(quant), na.rm=TRUE)
     
     #try the 75% of high values threshold
-    p75 <- ceiling((.50*length(group_spp))) # always choose a whole number up (even if 0.1 over the integer)
+    #p75 <- ceiling((.50*length(group_spp))) # always choose a whole number up (even if 0.1 over the integer)
     #max(terra::values(curr.sum.y), na.rm = TRUE) - max(terra::values(curr.sum.y), na.rm = TRUE)/4
-    curr.sum.test <- terra::ifel(curr.sum.y>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+    curr.sum.test <- terra::ifel(curr.sum.y>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.curr <-sum(terra::values(curr.sum.test), na.rm = TRUE)
     
 
@@ -426,7 +458,7 @@ leaflet::leaflet()|>
     #stack cropped to PAs only
     cropped_rast_yt <- terra::mask(curr.sum.y, yukon_PAs_crs)
     
-    
+    #some mean and sd values for current rasters # additional info
     sum.y.mean <-mean(terra::values(curr.sum.y), na.rm = TRUE)
     sum.y.sd <-sd(terra::values(curr.sum.y), na.rm = TRUE)
     sum.y.min <- min(terra::values(curr.sum.y), na.rm = TRUE)
@@ -438,7 +470,7 @@ leaflet::leaflet()|>
     stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
     
     #use the same p75 of the overall ecoregion to calculate this high qual area
-    area.cropped_rast_ytSDM <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+    area.cropped_rast_ytSDM <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.cropped_rast_ytSDM <-sum(terra::values(area.cropped_rast_ytSDM), na.rm = TRUE)
     
     PA_four_area_values<-NULL
@@ -448,19 +480,19 @@ leaflet::leaflet()|>
     print(paste("Working stacked",k, "refugia",format(Sys.time(), "%X") ))
     
     ref.sum <- terra::app(terra::rast(ref.mean.list), "sum")#/length(ref.mean.list)
-    ref.sum <- terra::mask(ref.sum, NA_rast.crs)#need to apply the NA mask to refugia, because it has zeros where NA should be
-    ref.sum <- terra::mask(ref.sum, AKrast)
+    # ref.sum <- terra::mask(ref.sum, NA_rast.crs)#need to apply the NA mask to refugia, because it has zeros where NA should be
+    # ref.sum <- terra::mask(ref.sum, AKrast)
     
     terra::crs(ref.sum) <- rast.crs
     
-    ref.sum.y <- terra::mask(ref.sum, bcr[1])
-    
+    #  ref.sum.y <- terra::mask(ref.sum, bcr[1])
+    ref.sum.y <- ref.sum
     
     ref.sd <- terra::app(terra::rast(ref.mean.list), "sd")#/length(ref.mean.list)
-    ref.sd <- terra::crop(ref.sd, NA_rast.crs)
-    ref.sd <- terra::mask(ref.sd, NA_rast.crs)
+    #ref.sd <- terra::crop(ref.sd, NA_rast.crs)
+    # ref.sd <- terra::mask(ref.sd, NA_rast.crs)
     
-    ref.sd <- terra::mask(ref.sd, AKrast)
+    # ref.sd <- terra::mask(ref.sd, AKrast)
    
     
     #quantile may always be selecting the same number of cells??????
@@ -469,7 +501,7 @@ leaflet::leaflet()|>
     #try the 75% of high values threshold
     #p75 <- max(terra::values(ref.sum.y), na.rm = TRUE) - max(terra::values(ref.sum.y), na.rm = TRUE)/4
   
-    ref.sum.test <- terra::ifel( ref.sum.y >= p75 , 1 , NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+    ref.sum.test <- terra::ifel( ref.sum.y >= q75 , 1 , NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     #plot(ref.sum.test)
     area.ref <-sum(terra::values(ref.sum.test), na.rm = TRUE)
     
@@ -492,7 +524,7 @@ leaflet::leaflet()|>
     stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
     
     
-    area.cropped_rast_ytREF <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+    area.cropped_rast_ytREF <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.cropped_rast_ytREF <-sum(terra::values(area.cropped_rast_ytREF), na.rm = TRUE)
     PA_four_area_values <- cbind( PA_four_area_values, area.cropped_rast_ytREF)
     
@@ -502,15 +534,15 @@ leaflet::leaflet()|>
     #suitability
     suit.sum <- terra::app(terra::rast(suit.mean.list), "sum")#/length(suit.mean.list)
     terra::crs(suit.sum) <- rast.crs
-    suit.sum.y <- terra::mask(suit.sum, NA_rast.crs)
-    suit.sum.y <- terra::mask(suit.sum.y, AKrast)
-    suit.sum.y <- terra::mask(suit.sum.y, bcr[1])
-    
+    # suit.sum.y <- terra::mask(suit.sum, NA_rast.crs)
+    # suit.sum.y <- terra::mask(suit.sum.y, AKrast)
+    # suit.sum.y <- terra::mask(suit.sum.y, bcr[1])
+    suit.sum.y <-suit.sum
     suit.sd <- terra::app(terra::rast(suit.mean.list), "sd")#/length(ref.mean.list)
-    suit.sd <- terra::crop(suit.sd, NA_rast.crs)
-    suit.sd <- terra::mask(suit.sd, NA_rast.crs)
+    # suit.sd <- terra::crop(suit.sd, NA_rast.crs)
+    #suit.sd <- terra::mask(suit.sd, NA_rast.crs)
     
-    suit.sd <- terra::mask(suit.sd, AKrast)
+    # suit.sd <- terra::mask(suit.sd, AKrast)
     
   
     #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
@@ -518,7 +550,7 @@ leaflet::leaflet()|>
     #try the 75% of high values threshold
     #p75 <- max(terra::values(suit.sum.y), na.rm = TRUE) - max(terra::values(suit.sum.y), na.rm = TRUE)/4
     
-    suit.sum.test <- terra::ifel(suit.sum.y >=p75 , 1 , NA)
+    suit.sum.test <- terra::ifel(suit.sum.y >=q75 , 1 , NA)
     #plot(suit.sum.test)
     area.suit <-sum(terra::values(suit.sum.test), na.rm = TRUE)
     four_area_values <- cbind( four_area_values, area.suit)
@@ -539,7 +571,7 @@ leaflet::leaflet()|>
    
    
    
-   area.cropped_rast_ytSUIT <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+   area.cropped_rast_ytSUIT <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
    area.cropped_rast_ytSUIT <-sum(terra::values(area.cropped_rast_ytSUIT), na.rm = TRUE)
    
    PA_four_area_values <- cbind( PA_four_area_values, area.cropped_rast_ytSUIT)
@@ -548,22 +580,22 @@ leaflet::leaflet()|>
     
     refxsuit.sum <- terra::app(terra::rast(refxsuit.mean.list), "sum")#/length(refxsuit.mean.list)
     terra::crs(refxsuit.sum) <- rast.crs
-    refxsuit.sum.y <- terra::mask(refxsuit.sum, NA_rast.crs)
-    refxsuit.sum.y <- terra::mask(refxsuit.sum.y, AKrast)
-    refxsuit.sum.y <- terra::mask(refxsuit.sum.y, bcr[1])
-    
+    # refxsuit.sum.y <- terra::mask(refxsuit.sum, NA_rast.crs)
+    #refxsuit.sum.y <- terra::mask(refxsuit.sum.y, AKrast)
+    #refxsuit.sum.y <- terra::mask(refxsuit.sum.y, bcr[1])
+    refxsuit.sum.y <-refxsuit.sum
     
     refxsuit.sd <- terra::app(terra::rast(refxsuit.mean.list), "sd")#/length(ref.mean.list)
-    refxsuit.sd <- terra::crop(refxsuit.sd, NA_rast.crs)
-    refxsuit.sd <- terra::mask(refxsuit.sd, NA_rast.crs)
+    #refxsuit.sd <- terra::crop(refxsuit.sd, NA_rast.crs)
+    # refxsuit.sd <- terra::mask(refxsuit.sd, NA_rast.crs)
     
-    refxsuit.sd <- terra::mask(refxsuit.sd, AKrast)
+    # refxsuit.sd <- terra::mask(refxsuit.sd, AKrast)
     
     
     #q75 <- quantile(terra::values(refxsuit.sum.y$sum), probs=c(0.75), na.rm=TRUE)
    # p75 <- max(terra::values(refxsuit.sum.y), na.rm = TRUE) - max(terra::values(refxsuit.sum.y), na.rm = TRUE)/4
     
-    refxsuit.test <- terra::ifel( refxsuit.sum.y >= p75 , 1 , NA )
+    refxsuit.test <- terra::ifel( refxsuit.sum.y >= q75 , 1 , NA )
     area.refxsuit <-sum(terra::values(refxsuit.test), na.rm = TRUE)
     four_area_values <- cbind( four_area_values, area.refxsuit)
     rm( area.refxsuit )
@@ -581,12 +613,12 @@ leaflet::leaflet()|>
     sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
     stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
     
-    area.cropped_rast_ytREFxSUIT <- terra::ifel(cropped_rast_yt>=p75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+    area.cropped_rast_ytREFxSUIT <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
     area.cropped_rast_ytREFxSUIT <-sum(terra::values(area.cropped_rast_ytREFxSUIT), na.rm = TRUE)
     
     PA_four_area_values <- cbind( PA_four_area_values, area.cropped_rast_ytREFxSUIT)
     
-    p75s <- cbind(p75s, p75)
+    p75s <- cbind(p75s, q75)
     
     #make sets of plots of only the 4 categories (curr, ref, suit, ref x suit) per species grouping (res, ldm, sdm)
     three.cats  <- list(curr.sum, ref.sum, suit.sum, refxsuit.sum) # list of sacked rasters for each group iteration TO PLOT
@@ -626,7 +658,7 @@ leaflet::leaflet()|>
   }# end of group loop
   
   
-  } # end of calculation run
+   # end of calculation run
 # Calculate percentages for surface of high quality areas over all ecoregion and YT Protected area system
 
 saved_means_stacks<-stacks.mean.vals
@@ -647,7 +679,7 @@ pa_group_area_values
 ###
 
  #Produce dataframes with high quality areas overall and withing protected areas, per migra group
-  {
+  
     df <- as.data.frame(group_area_values)
  
 #produce table with area coverage of good refugia
@@ -658,11 +690,11 @@ high.areas<-df[ , c("Category", "Present", "Refugia", "Fut.Suitable", "RefxFut.S
 
 
 # re calculating BCR are based on the actual modelled area within the BCR (excluded the NAd pixels to avoid over estimation of the %)
-cropped_rast_bcr <- terra::mask(bird_rast, bcr)# grab one raster, to get the modeled area using each pixel
+#cropped_rast_bcr <- terra::mask(bird_rast, bcr)# grab one raster, to get the modeled area using each pixel
 
 #plot(cropped_rast_bcr)
 
-for_calc_bcr <- cropped_rast_bcr
+for_calc_bcr <- bird_rast
 for_calc_bcr <-  terra::crop(for_calc_bcr, NA_rast.crs) #crop to final area
 for_calc_bcr <- terra::mask(for_calc_bcr, NA_rast.crs)#mask using NAs from env variables 
 for_calc_bcr <- terra::mask(for_calc_bcr, AKrast)
@@ -675,7 +707,7 @@ high.areas$Ref.Percent <- high.areas$Refugia/ as.numeric(area.bcr_for_calc)*100
 high.areas$Fut.Suitable.Perc <- high.areas$Fut.Suitable/ as.numeric(area.bcr_for_calc)*100
 high.areas$RefxFut.Perc <- high.areas$RefxFut.Suit/ as.numeric(area.bcr_for_calc)*100
 high.areas
-#write.csv(high.areas, "data/high.areasv2.csv")
+write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
 
 
 
@@ -719,10 +751,10 @@ high.pa.area$RefxFut.Perc_ECO <- high.pa.area$RefxFut.Suit/ as.numeric(area.bcr_
 print(high.areas)
 print(high.pa.area)
 
-#write.csv(high.pa.area, "data/high.pa.areav2.csv")
+write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
 
 }
-
+}
 ###########################################################################
 ###########################################################################
 ############### PLOTS #####################################################
@@ -802,7 +834,7 @@ for (m in 1:length(all.group.rasters)) {
   #cowplot object with 4 maps of each migra group iteration 
   
   one_group_4plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 4 )
-  ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plot",groupings_labs[m], ".png") ,
+  ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plotv17",groupings_labs[m], ".png") ,
                  path = "plots/", units = "in", width = 30, height = 6.5, dpi = 300, bg = "white")
   print(paste("Saving plots to disk",groupings_labs[m], format(Sys.time(), "%X") ))
   
@@ -818,7 +850,7 @@ group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 
 
 print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
 
-ggplot2::ggsave(group_plots.png, filename = "group_plots.v15FORCED3.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
+ggplot2::ggsave(group_plots.png, filename = "group_plots.v17FORCED3.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
 end.time <- Sys.time()
 print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
 
