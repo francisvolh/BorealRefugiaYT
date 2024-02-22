@@ -60,9 +60,9 @@ N_assig <- df.spp.names.merged |>
   dplyr::select(all.birds) |> 
   dplyr::pull()
 
-groupings_labs <- c("RES","LDM","SDM"#,"NOM"#,"N_assig"
+groupings_labs <- c("RES","SDM", "LDM"#,"NOM"#,"N_assig"
                     )
-groupings <- c(RES,LDM,SDM#,NOM#,N_assig
+groupings <- c(RES,SDM,LDM#,NOM#,N_assig
                )
 
 max.len <- max(length(LDM),length(SDM),length(RES))
@@ -290,7 +290,7 @@ leaflet::leaflet()|>
 
 ################################################################################################
 ################################################################################################
-### 2) PRODUCE STACK GRAPHS FOR CURRENT SUITABILITY, REFUGIA, FUTURE SUITABILITY, and SUITABLE REFUCIA
+### 2) PRODUCE STACKS FOR CURRENT SUITABILITY, REFUGIA, FUTURE SUITABILITY, and SUITABLE REFUGIA rasters
 ### including calculation of high value areas surface coverage of ecoregions and  PAs
 ### for GROUPING categories 
 #########################################################################
@@ -305,23 +305,9 @@ no_change <- setdiff(no_change,increasers)
 groupings_labs <- c("decreasers","increasers", "no_change")
 
 { 
-qs <-  c(0.25, 0.50, 0.75)
-
-  for (q in qs) { ### need to clean the code not to stack 3 times for no reason (because of the quantiles!!!!!!)
-    #carefully move the DFs that will save values
-    #need to save all the same values?? maybe not? REVISE which ones you need to keep or save if now the 3 qs are being run????
-    
-    quant<- q
-  
-  #Curent loop runs over all predefined groups
-#par(mfrow = c(3,2))
-
-  
-  
-  group_area_values<- NULL # dataframe, will hold the q75 surface area values for each migratory group, per raster stack 
-  pa_group_area_values <- NULL # df will hold PA values the q75 surface area values for each migra group per raster stack
   all.group.rasters<-NULL # list, will hold 3 lists, one per migra group (three cats), with 4 stacked raster each
   all.groups.sd.rasters<-NULL
+  
   stacks.mean.vals <- NULL
   high.pa.vals <- NULL
   p75s<- NULL
@@ -330,24 +316,18 @@ qs <-  c(0.25, 0.50, 0.75)
   
   #loop for to run all groups
   begin.time <- Sys.time()
+  
+  #iterate per migratory group
   for (k in groupings_labs) {
     
     #for one group
-    
     group_spp <- get(k)
-    
-    
-    ##############
-    #group_spp<-setdiff(group_spp,"WIWR")
-    ###########
-    
-    
     
     three.cats <- NULL# resets in each grouping run, will hold the 4 rasters per migra group 
     #three.cats.vals <- NULL # not needed anymore, just throw directly into the group_area_values list
     three.cats.names <- NULL# resets in each grouping run, will hold the 4 rasters Names per migra group
     
-
+    
     #skipping this object
     #three.cats.vals <- NULL # will be a list, will hold the 4 surface area values for each migra iteration (curr, ref, suit, ref x suit)
     
@@ -357,29 +337,13 @@ qs <-  c(0.25, 0.50, 0.75)
     refxsuit.mean.list <- NULL# resets for each grouping run - k iteration in the loop
     
     print(paste("Processing", k, "species"))
-    for (i in c(group_spp)) {
+    
+    #loop to load each species into a list to be stacked within each iteration per group
+    for (i in c(group_spp)) { 
       
       startnum[[i]]<-i
       print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "current dist", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
       
-      # we dont do this anymore, but use the cropped ecoregion new rasters
-      #load current distributions RDS
-      #rast1 <- readRDS(files.vect[grep(i, files.vect)] )
-      #Max95<-quantile(rast1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
-      
-      #rast1 <- rast1 |>
-       # dplyr::mutate(
-        #  std.mean = Mean/Max95
-        #)
-      
-      #rast1<-terra::rast(rast1, crs =  rast.crs)  
-     
-       #rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
-     
-      #rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
-      #terra::crs(rast1) <- rast.crs # assign a crs to avoid warning
-      
-      #rm(rast1)
       
       rast1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","PresentSuit.tif"), files.to.read)])
       terra::crs(rast1) <- rast.crs # assign crs to avoid warning
@@ -387,13 +351,12 @@ qs <-  c(0.25, 0.50, 0.75)
       rm(rast1)
       
       print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "refugia", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
-      #loads the refugia rasters
-      #rasters are sometimes tif or tiff, so the grep() solves it
+      
       ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","FutureRef.tif"), files.to.read)])
       terra::crs(ref.ras1) <- rast.crs # assign crs to avoid warning
       ref.mean.list[[i]] <- ref.ras1
       rm(ref.ras1)
-
+      
       
       print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "future dist", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
       suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"_","FutureSuit.tif"), files.to.read)])
@@ -417,219 +380,45 @@ qs <-  c(0.25, 0.50, 0.75)
     #for SDM also did average to compare that visually look the same, Diana agrees they are the same
     #par(mfrow = c(1,3))
     print(paste("Working stacked",k, "current", format(Sys.time(), "%X") ))
-    
+    #current
     curr.sum <- terra::app(terra::rast(curr.mean.list), "sum")#/length(ref.mean.list)
     
     terra::crs(curr.sum) <- rast.crs
     
-    #curr.sum <- terra::crop(curr.sum, NA_rast.crs)
-    #curr.sum <- terra::mask(curr.sum, NA_rast.crs)
-    
-    #curr.sum <- terra::mask(curr.sum, AKrast)
-    #curr.sum.y <- terra::mask(curr.sum, bcr[1])
     curr.sum.y <-curr.sum #lazy solution to not change all the names below
     
     curr.sd <- terra::app(terra::rast(curr.mean.list), "sd")#/length(ref.mean.list)
-    #curr.sd <- terra::crop(curr.sd, NA_rast.crs)
-    #curr.sd <- terra::mask(curr.sd, NA_rast.crs)
-    
-    #curr.sd <- terra::mask(curr.sd, AKrast)
-    
-    
-    # quantile may always be selecting the same number of cells???????
-    q75 <- quantile(terra::values(curr.sum.y), probs=c(quant), na.rm=TRUE)
-    
-    #try the 75% of high values threshold
-    #p75 <- ceiling((.50*length(group_spp))) # always choose a whole number up (even if 0.1 over the integer)
-    #max(terra::values(curr.sum.y), na.rm = TRUE) - max(terra::values(curr.sum.y), na.rm = TRUE)/4
-    curr.sum.test <- terra::ifel(curr.sum.y>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
-    area.curr <-sum(terra::values(curr.sum.test), na.rm = TRUE)
-    
-
-    #plot(curr.sum.test)
-    
-    four_area_values<-NULL
-    four_area_values <- cbind( four_area_values, area.curr)
-    rm(area.curr)
-    
-   
-    ######
-    ######
-    #stack cropped to PAs only
-    cropped_rast_yt <- terra::mask(curr.sum.y, yukon_PAs_crs)
-    
-    #some mean and sd values for current rasters # additional info
-    sum.y.mean <-mean(terra::values(curr.sum.y), na.rm = TRUE)
-    sum.y.sd <-sd(terra::values(curr.sum.y), na.rm = TRUE)
-    sum.y.min <- min(terra::values(curr.sum.y), na.rm = TRUE)
-    sum.y.max <- max(terra::values(curr.sum.y), na.rm = TRUE)
-    sum.y.PAmean <-mean(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAsd <-sd(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAmin <- min(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
-    stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
-    
-    #use the same p75 of the overall ecoregion to calculate this high qual area
-    area.cropped_rast_ytSDM <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
-    area.cropped_rast_ytSDM <-sum(terra::values(area.cropped_rast_ytSDM), na.rm = TRUE)
-    
-    PA_four_area_values<-NULL
-    PA_four_area_values <- cbind( PA_four_area_values, area.cropped_rast_ytSDM)
-    
     
     print(paste("Working stacked",k, "refugia",format(Sys.time(), "%X") ))
-    
+    #refugia
     ref.sum <- terra::app(terra::rast(ref.mean.list), "sum")#/length(ref.mean.list)
-    # ref.sum <- terra::mask(ref.sum, NA_rast.crs)#need to apply the NA mask to refugia, because it has zeros where NA should be
-    # ref.sum <- terra::mask(ref.sum, AKrast)
-    
     terra::crs(ref.sum) <- rast.crs
-    
-    #  ref.sum.y <- terra::mask(ref.sum, bcr[1])
     ref.sum.y <- ref.sum
-    
     ref.sd <- terra::app(terra::rast(ref.mean.list), "sd")#/length(ref.mean.list)
-    #ref.sd <- terra::crop(ref.sd, NA_rast.crs)
-    # ref.sd <- terra::mask(ref.sd, NA_rast.crs)
-    
-    # ref.sd <- terra::mask(ref.sd, AKrast)
-   
-    
-    #quantile may always be selecting the same number of cells??????
-    #q75 <- quantile(terra::values(ref.sum.y), probs=c(0.75), na.rm=TRUE)  
-    
-    #try the 75% of high values threshold
-    #p75 <- max(terra::values(ref.sum.y), na.rm = TRUE) - max(terra::values(ref.sum.y), na.rm = TRUE)/4
-  
-    ref.sum.test <- terra::ifel( ref.sum.y >= q75 , 1 , NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
-    #plot(ref.sum.test)
-    area.ref <-sum(terra::values(ref.sum.test), na.rm = TRUE)
-    
-    four_area_values <- cbind( four_area_values, area.ref)
-    rm(area.ref )
-
-
-    #stack cropped to PAs only
-    cropped_rast_yt <- terra::mask(ref.sum.y, yukon_PAs_crs)
-    
-    sum.y.mean <-mean(terra::values(ref.sum.y), na.rm = TRUE)
-    sum.y.sd <-sd(terra::values(ref.sum.y), na.rm = TRUE)
-    sum.y.min <- min(terra::values(ref.sum.y), na.rm = TRUE)
-    sum.y.max <- max(terra::values(ref.sum.y), na.rm = TRUE)
-
-    sum.y.PAmean <-mean(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAsd <-sd(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAmin <- min(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
-    stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
-    
-    
-    area.cropped_rast_ytREF <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
-    area.cropped_rast_ytREF <-sum(terra::values(area.cropped_rast_ytREF), na.rm = TRUE)
-    PA_four_area_values <- cbind( PA_four_area_values, area.cropped_rast_ytREF)
-    
     
     print(paste("Working stacked",k, "suitability",format(Sys.time(), "%X") ))
-    
     #suitability
     suit.sum <- terra::app(terra::rast(suit.mean.list), "sum")#/length(suit.mean.list)
     terra::crs(suit.sum) <- rast.crs
-    # suit.sum.y <- terra::mask(suit.sum, NA_rast.crs)
-    # suit.sum.y <- terra::mask(suit.sum.y, AKrast)
-    # suit.sum.y <- terra::mask(suit.sum.y, bcr[1])
     suit.sum.y <-suit.sum
     suit.sd <- terra::app(terra::rast(suit.mean.list), "sd")#/length(ref.mean.list)
-    # suit.sd <- terra::crop(suit.sd, NA_rast.crs)
-    #suit.sd <- terra::mask(suit.sd, NA_rast.crs)
     
-    # suit.sd <- terra::mask(suit.sd, AKrast)
     
-  
-    #calculate 75% and max values for each sum of categories per set (ref, suit, ref x suit per each RES, SDM and LDM) 
-    #q75 <- quantile(terra::values(suit.sum.y), probs=c(0.75), na.rm=TRUE)
-    #try the 75% of high values threshold
-    #p75 <- max(terra::values(suit.sum.y), na.rm = TRUE) - max(terra::values(suit.sum.y), na.rm = TRUE)/4
-    
-    suit.sum.test <- terra::ifel(suit.sum.y >=q75 , 1 , NA)
-    #plot(suit.sum.test)
-    area.suit <-sum(terra::values(suit.sum.test), na.rm = TRUE)
-    four_area_values <- cbind( four_area_values, area.suit)
-    rm( area.suit )
-    
-   #stack cropped to PAs only
-   cropped_rast_yt <- terra::mask(suit.sum.y, yukon_PAs_crs)
-   
-   sum.y.mean <-mean(terra::values(suit.sum.y), na.rm = TRUE)
-   sum.y.sd <-sd(terra::values(suit.sum.y), na.rm = TRUE)
-   sum.y.min <- min(terra::values(suit.sum.y), na.rm = TRUE)
-   sum.y.max <- max(terra::values(suit.sum.y), na.rm = TRUE)
-   sum.y.PAmean <-mean(terra::values(cropped_rast_yt), na.rm = TRUE)
-   sum.y.PAsd <-sd(terra::values(cropped_rast_yt), na.rm = TRUE)
-   sum.y.PAmin <- min(terra::values(cropped_rast_yt), na.rm = TRUE)
-   sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
-   stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
-   
-   
-   
-   area.cropped_rast_ytSUIT <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
-   area.cropped_rast_ytSUIT <-sum(terra::values(area.cropped_rast_ytSUIT), na.rm = TRUE)
-   
-   PA_four_area_values <- cbind( PA_four_area_values, area.cropped_rast_ytSUIT)
-   
     print(paste("Working stacked",k, "ref x suitability",format(Sys.time(), "%X") ))
-    
+    #ref x suit
     refxsuit.sum <- terra::app(terra::rast(refxsuit.mean.list), "sum")#/length(refxsuit.mean.list)
     terra::crs(refxsuit.sum) <- rast.crs
-    # refxsuit.sum.y <- terra::mask(refxsuit.sum, NA_rast.crs)
-    #refxsuit.sum.y <- terra::mask(refxsuit.sum.y, AKrast)
-    #refxsuit.sum.y <- terra::mask(refxsuit.sum.y, bcr[1])
     refxsuit.sum.y <-refxsuit.sum
-    
     refxsuit.sd <- terra::app(terra::rast(refxsuit.mean.list), "sd")#/length(ref.mean.list)
-    #refxsuit.sd <- terra::crop(refxsuit.sd, NA_rast.crs)
-    # refxsuit.sd <- terra::mask(refxsuit.sd, NA_rast.crs)
     
-    # refxsuit.sd <- terra::mask(refxsuit.sd, AKrast)
-    
-    
-    #q75 <- quantile(terra::values(refxsuit.sum.y$sum), probs=c(0.75), na.rm=TRUE)
-   # p75 <- max(terra::values(refxsuit.sum.y), na.rm = TRUE) - max(terra::values(refxsuit.sum.y), na.rm = TRUE)/4
-    
-    refxsuit.test <- terra::ifel( refxsuit.sum.y >= q75 , 1 , NA )
-    area.refxsuit <-sum(terra::values(refxsuit.test), na.rm = TRUE)
-    four_area_values <- cbind( four_area_values, area.refxsuit)
-    rm( area.refxsuit )
-    
-    #stack cropped to PAs only
-    cropped_rast_yt <- terra::mask(refxsuit.sum.y, yukon_PAs_crs)
-    
-    sum.y.mean <-mean(terra::values(refxsuit.sum.y), na.rm = TRUE)
-    sum.y.sd <-sd(terra::values(refxsuit.sum.y), na.rm = TRUE)
-    sum.y.min <- min(terra::values(refxsuit.sum.y), na.rm = TRUE)
-    sum.y.max <- max(terra::values(refxsuit.sum.y), na.rm = TRUE)
-    sum.y.PAmean <-mean(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAsd <-sd(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAmin <- min(terra::values(cropped_rast_yt), na.rm = TRUE)
-    sum.y.PAmax <- max(terra::values(cropped_rast_yt), na.rm = TRUE)
-    stacks.mean.vals <- rbind( stacks.mean.vals, data.frame(sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax))
-    
-    area.cropped_rast_ytREFxSUIT <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
-    area.cropped_rast_ytREFxSUIT <-sum(terra::values(area.cropped_rast_ytREFxSUIT), na.rm = TRUE)
-    
-    PA_four_area_values <- cbind( PA_four_area_values, area.cropped_rast_ytREFxSUIT)
-    
-    p75s <- cbind(p75s, q75)
-    
-    #make sets of plots of only the 4 categories (curr, ref, suit, ref x suit) per species grouping (res, ldm, sdm)
+    #make sets of rasters of only the 4 categories (curr, ref, suit, ref x suit) per species grouping (res, ldm, sdm)
     three.cats  <- list(curr.sum, ref.sum, suit.sum, refxsuit.sum) # list of sacked rasters for each group iteration TO PLOT
     
     four.sds.cats  <- list(curr.sd, ref.sd, suit.sd, refxsuit.sd)
     
     #need the names for ggplots, may ditch later for pub
-  
-    category <- c(paste0(k,".current.sum"), paste0(k,".refugia.sum"),paste0(k,".future.sum"),paste0(k,".refugia x future.sum")) # list of names
     
-   
+    category <- c(paste0(k,".current.sum"), paste0(k,".refugia.sum"),paste0(k,".future.sum"),paste0(k,".refugia x future.sum")) # list of names
     
     categoryCol <- cbind(categoryCol, category)    
     
@@ -639,122 +428,149 @@ qs <-  c(0.25, 0.50, 0.75)
     
     all.groups.sd.rasters[[k]] <- four.sds.cats
     
-    class(all.group.rasters)
-    #group_area_values[[k]]<- list(area.curr, area.ref, area.suit, area.refxsuit ) # compile values of areas for calculations of percentage table
-   #switching this list for a rbind
-    group_area_values <- rbind(group_area_values, four_area_values)
-    #rm( four_area_values )
-    pa_group_area_values <- rbind(pa_group_area_values, PA_four_area_values)
-    
     
     # make a cbind ones I get all the protected areas to USE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     #high.pa.vals[[k]] <- list(area.cropped_rast_ytSDM, area.cropped_rast_ytREF, area.cropped_rast_ytSUIT, area.cropped_rast_ytRxS)
-
-  end.time <- Sys.time()
-  
-  print(paste("total duration of raster processing", round(difftime(end.time, begin.time, units = "mins"),2), "mins"))
-
-
+    
+    end.time <- Sys.time()
+    
+    
+    
+    
   }# end of group loop
   
+  print(paste("total duration of raster stacking", round(difftime(end.time, begin.time, units = "mins"),2), "mins"))
   
-   # end of calculation run
-# Calculate percentages for surface of high quality areas over all ecoregion and YT Protected area system
-
-saved_means_stacks<-stacks.mean.vals
-
-stacks.mean.vals$category <- c(categoryCol[,1],categoryCol[,2] ,categoryCol[,3])
-
-#mean pixel value and descriptive stats per stack
-stacks.mean.vals|>
-  dplyr::mutate_at(1:length(stacks.mean.vals)-1, round, 2)|>
-  dplyr::select(category, sum.y.mean, sum.y.sd, sum.y.min, sum.y.max, sum.y.PAmean, sum.y.PAsd, sum.y.PAmin, sum.y.PAmax)
+  qs <-  c(0.25, 0.50, 0.75)
   
-
-group_area_values
-pa_group_area_values
-
-###
-###
-###
-
- #Produce dataframes with high quality areas overall and withing protected areas, per migra group
-  
+  for (q in qs) { 
+    
+    group_area_values<- NULL # dataframe, will hold the q75 surface area values for each migratory group, per raster stack 
+    pa_group_area_values <- NULL # df will hold PA values the q75 surface area values for each migra group per raster stack
+    
+    quant<- q
+    group_area_values<-NULL 
+    for (n in 1:length(all.group.rasters)) {
+      four_area_values<-NULL
+      PA_four_area_values<-NULL
+      for (m in 1:length(all.group.rasters[[n]])) {
+        
+        # quantile of one raster (kept it named as q75 but it will change)
+        if (m==1) {
+          q75 <- quantile(terra::values(all.group.rasters[[n]][[m]]), probs=c(quant), na.rm=TRUE)
+        }
+        
+        sum.test <- terra::ifel(all.group.rasters[[n]][[m]]>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+        area <-sum(terra::values(sum.test), na.rm = TRUE)
+        
+        cropped_rast_yt <- terra::mask(all.group.rasters[[n]][[m]], yukon_PAs_crs)
+        
+        area.cropped <- terra::ifel(cropped_rast_yt>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
+        area.cropped <-sum(terra::values(area.cropped), na.rm = TRUE)
+        
+        four_area_values <- cbind( four_area_values, area)
+        
+        PA_four_area_values <- cbind( PA_four_area_values, area.cropped)
+        
+      }
+      
+      four_area_values<- cbind(four_area_values, names(all.group.rasters[n]))
+      
+      group_area_values <- rbind(group_area_values, four_area_values)
+      
+      
+      PA_four_area_values<- cbind(PA_four_area_values, names(all.group.rasters[n]))
+      
+      pa_group_area_values<- rbind(pa_group_area_values, PA_four_area_values)
+      
+      
+    }
+    
+    
+    
+    
     df <- as.data.frame(group_area_values)
- 
-#produce table with area coverage of good refugia
-df$Category <- groupings_labs
-names(df) <- c( "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit", "Category")
-
-high.areas<-df[ , c("Category", "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit")]
-
-
-# re calculating BCR are based on the actual modelled area within the BCR (excluded the NAd pixels to avoid over estimation of the %)
-#cropped_rast_bcr <- terra::mask(bird_rast, bcr)# grab one raster, to get the modeled area using each pixel
-
-#plot(cropped_rast_bcr)
-
-for_calc_bcr <- bird_rast
-for_calc_bcr <-  terra::crop(for_calc_bcr, NA_rast.crs) #crop to final area
-for_calc_bcr <- terra::mask(for_calc_bcr, NA_rast.crs)#mask using NAs from env variables 
-for_calc_bcr <- terra::mask(for_calc_bcr, AKrast)
-for_calc_bcr <- terra::ifel(for_calc_bcr >0, 1, NA)
-#plot(for_calc_bcr)
-area.bcr_for_calc<-sum(terra::values(for_calc_bcr), na.rm = TRUE)
-
-high.areas$Pres.Percent <- high.areas$Present/ as.numeric(area.bcr_for_calc)*100
-high.areas$Ref.Percent <- high.areas$Refugia/ as.numeric(area.bcr_for_calc)*100
-high.areas$Fut.Suitable.Perc <- high.areas$Fut.Suitable/ as.numeric(area.bcr_for_calc)*100
-high.areas$RefxFut.Perc <- high.areas$RefxFut.Suit/ as.numeric(area.bcr_for_calc)*100
-high.areas
-write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
-
-
-
-###
-### FIX the PA section making a rbind
-###
-for_calc <- cropped_rast_yt # grab the last raster produced of a stack for only PA masks
-
-for_calc <- terra::ifel(for_calc >0, 1, NA)
-#plot(for_calc)
-area.for_calc<-sum(terra::values(for_calc), na.rm = TRUE) # exclude the NAs for models and Alaska
-
-df2<-as.data.frame(pa_group_area_values)
-df2$Category <- groupings_labs
-
-names(df2) <- c( "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit", "Category")
-
-high.pa.area <- df2[, c( "Category", "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit")]
-
-high.pa.area$Pres.Percent <- high.pa.area$Present/ as.numeric(area.for_calc)*100
-#high.pa.area$Ref.Percent <- high.pa.area$Refugia/ as.numeric(area.for_calc)*100
-#high.pa.area$Fut.Suitable.Perc <- high.pa.area$Fut.Suitable/ as.numeric(area.for_calc)*100
-high.pa.area$RefxFut.Perc <- high.pa.area$RefxFut.Suit/ as.numeric(area.for_calc)*100
-
-
-
-high.pa.area$Pres.Percent <- high.pa.area$Present/ as.numeric(area.for_calc)*100
-high.pa.area$Pres.Percent_ECO <- high.pa.area$Present/ as.numeric(area.bcr_for_calc)*100
-##high.pa.area$Pres.Dif_Percent_PAECO <- (high.pa.area$Present-high.areas$Present)/ high.areas$Present*100
-
-#high.pa.area$Ref.Percent <- high.pa.area$Refugia/ as.numeric(area.for_calc)*100
-#high.pa.area$Fut.Suitable.Perc <- high.pa.area$Fut.Suitable/ as.numeric(area.for_calc)*100
-
-high.pa.area$RefxFut.Perc <- high.pa.area$RefxFut.Suit/ as.numeric(area.for_calc)*100
-high.pa.area$RefxFut.Perc_ECO <- high.pa.area$RefxFut.Suit/ as.numeric(area.bcr_for_calc)*100
-
-##high.pa.area$RefxFut.Suit.Dif_Percent_PAECO <- (high.pa.area$RefxFut.Suit-high.areas$RefxFut.Suit)/ high.areas$RefxFut.Suit*100
-
-
-
-print(high.areas)
-print(high.pa.area)
-
-write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
-
+    
+    #produce table with area coverage of good refugia
+    #df$Category <- groupings_labs
+    names(df) <- c( "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit", "Category")
+    
+    high.areas<-df[ , c("Category", "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit")]
+    
+    
+    # re calculating BCR are based on the actual modelled area within the BCR (excluded the NAd pixels to avoid over estimation of the %)
+    #cropped_rast_bcr <- terra::mask(bird_rast, bcr)# grab one raster, to get the modeled area using each pixel
+    
+    #plot(cropped_rast_bcr)
+    
+    for_calc_bcr <- bird_rast
+    for_calc_bcr <-  terra::crop(for_calc_bcr, NA_rast.crs) #crop to final area
+    for_calc_bcr <- terra::mask(for_calc_bcr, NA_rast.crs)#mask using NAs from env variables 
+    for_calc_bcr <- terra::mask(for_calc_bcr, AKrast)
+    for_calc_bcr <- terra::ifel(for_calc_bcr >0, 1, NA)
+    #plot(for_calc_bcr)
+    area.bcr_for_calc<-sum(terra::values(for_calc_bcr), na.rm = TRUE)
+    
+    high.areas$Pres.Percent <- as.numeric(high.areas$Present)/ as.numeric(area.bcr_for_calc)*100
+    high.areas$Ref.Percent <- as.numeric(high.areas$Refugia)/ as.numeric(area.bcr_for_calc)*100
+    high.areas$Fut.Suitable.Perc <- as.numeric(high.areas$Fut.Suitable)/ as.numeric(area.bcr_for_calc)*100
+    high.areas$RefxFut.Perc <- as.numeric(high.areas$RefxFut.Suit)/ as.numeric(area.bcr_for_calc)*100
+    high.areas
+    #write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
+    
+    
+    
+    ###
+    ### FIX the PA section making a rbind
+    ###
+    cropped_rast_yt <- terra::mask(bird_rast, yukon_PAs_crs)
+    for_calc <- cropped_rast_yt # grab the last raster produced of a stack for only PA masks
+    
+    for_calc <- terra::ifel(for_calc >0, 1, NA)
+    #plot(for_calc)
+    area.for_calc<-sum(terra::values(for_calc), na.rm = TRUE) # exclude the NAs for models and Alaska
+    
+    df2<-as.data.frame(pa_group_area_values)
+    df2$Category <- groupings_labs
+    
+    names(df2) <- c( "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit", "Category")
+    
+    high.pa.area <- df2[, c( "Category", "Present", "Refugia", "Fut.Suitable", "RefxFut.Suit")]
+    
+    high.pa.area$Pres.Percent <- as.numeric(high.pa.area$Present)/ as.numeric(area.for_calc)*100
+    #high.pa.area$Ref.Percent <- high.pa.area$Refugia/ as.numeric(area.for_calc)*100
+    #high.pa.area$Fut.Suitable.Perc <- high.pa.area$Fut.Suitable/ as.numeric(area.for_calc)*100
+    high.pa.area$RefxFut.Perc <- as.numeric(high.pa.area$RefxFut.Suit)/ as.numeric(area.for_calc)*100
+    
+    
+    
+    high.pa.area$Pres.Percent <- as.numeric(high.pa.area$Present)/ as.numeric(area.for_calc)*100
+    high.pa.area$Pres.Percent_ECO <- as.numeric(high.pa.area$Present)/ as.numeric(area.bcr_for_calc)*100
+    ##high.pa.area$Pres.Dif_Percent_PAECO <- (high.pa.area$Present-high.areas$Present)/ high.areas$Present*100
+    
+    #high.pa.area$Ref.Percent <- high.pa.area$Refugia/ as.numeric(area.for_calc)*100
+    #high.pa.area$Fut.Suitable.Perc <- high.pa.area$Fut.Suitable/ as.numeric(area.for_calc)*100
+    
+    high.pa.area$RefxFut.Perc <- as.numeric(high.pa.area$RefxFut.Suit)/ as.numeric(area.for_calc)*100
+    high.pa.area$RefxFut.Perc_ECO <- as.numeric(high.pa.area$RefxFut.Suit)/ as.numeric(area.bcr_for_calc)*100
+    
+    ##high.pa.area$RefxFut.Suit.Dif_Percent_PAECO <- (high.pa.area$RefxFut.Suit-high.areas$RefxFut.Suit)/ high.areas$RefxFut.Suit*100
+    
+    
+    
+    print(high.areas)
+    print(high.pa.area)
+    
+    #write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
+    
+  }
+  end.time <- Sys.time()
+  print(paste("total duration of raster stacking", round(difftime(end.time, begin.time, units = "mins"),2), "mins"))
+  
 }
-}
+
+
+
 ###########################################################################
 ###########################################################################
 ############### PLOTS #####################################################
