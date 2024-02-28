@@ -1,5 +1,17 @@
 
-raster_test <- all.group.rasters[[1]][[1]]
+raster_test1 <- all.group.rasters[[1]][[4]]
+raster_test2 <- all.group.rasters[[2]][[4]]
+raster_test3 <- all.group.rasters[[3]][[4]]
+
+terra::writeRaster(
+  raster_test3,
+  "data/raster_test3.tif",
+  overwrite = TRUE#,
+  #NAflag = 255
+)
+
+
+
 terra::plot(raster_test)
 min(terra::values(raster_test), na.rm = TRUE)
 max(terra::values(raster_test), na.rm = TRUE)
