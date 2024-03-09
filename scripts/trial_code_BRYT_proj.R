@@ -470,6 +470,24 @@ spp_list_pub<- df.all.birds.merged|>
 
 
 
+##### ##### ##### ##### ##### 
+##### ##### ##### ##### ##### 
+##### add top 5 influence vars per spp
+##### ##### ##### ##### ##### 
+##### ##### ##### ##### ##### 
+top5spp <- read.csv("data/YT Boreal Refugia Drive/YK Refugia Code and material/BRT_output/influence/Top5Influence.csv")
+
+top5spp.wide <- top5spp|>
+  dplyr::group_by(Spp)|>
+  dplyr::summarise(
+    variables = paste(unique(ClimateVar), collapse = ', ')
+  )
+
+spp_list_pub <- spp_list_pub |>
+  dplyr::left_join(top5spp.wide, by= dplyr::join_by(CODE == Spp))
+#write.csv(spp_list_pub, "data/spp_list_pubInProg.csv", row.names = FALSE)
+
+
 
 
 #####
