@@ -300,7 +300,142 @@ subsamples_plots <- cowplot::plot_grid(A, B, C, labels = c("A", #"B",
 #ggsave(subsamples_plots2, filename = "subsamples_plotsOPTION3.png", path = "plots/", units = "in", width = 30, height = 9, dpi = 300, bg = "white")
 
 
+##################################################################
+############ 2)  Bin  elevations and # of pixels with high quality in those bins
+############  <250m, 250-500, 500-750...
 
+#terra::plot(elevation)
+
+elevbcr <- terra::mask(elevation, terra::vect(bcr))
+#terra::plot(elevbcr)
+#produce 6 bins
+maskEle01<- terra::ifel(elevbcr <250, 1, NA)
+maskEle01 <-terra::mask(maskEle01, terra::vect(bcr))
+
+maskEle02<- terra::ifel(elevbcr >= 250, elevbcr, NA)
+maskEle02<- terra::ifel(maskEle02 < 500, 1, NA)
+
+maskEle03<- terra::ifel(elevbcr >= 500, elevbcr, NA)
+maskEle03<- terra::ifel(maskEle03 < 750, 1, NA)
+
+maskEle04<- terra::ifel(elevbcr >= 750, elevbcr, NA)
+maskEle04<- terra::ifel(maskEle04 < 1000, 1, NA)
+
+maskEle05<- terra::ifel(elevbcr >= 1000, elevbcr, NA)
+maskEle05<- terra::ifel(maskEle05 < 1250, 1, NA)
+
+maskEle06<- terra::ifel(elevbcr >= 1250, 1, NA)
+
+masks_vect<-list(maskEle01, maskEle02, maskEle03, maskEle04, maskEle05, maskEle06)
+masks_labs<-c("<250", "250-500", "500-750", "750-1000", "1000-1250", ">1250")
+
+
+
+
+par(mfrow=c(1,1))
+terra::plot(terra::mask(elevation, terra::vect(bcr)))
+
+hist(terra::values(terra::mask(elevation, terra::vect(bcr))))
+
+{
+  
+  #all.group.rasters  # list of rasters, one per migra group (three cats), with 4 stacked raster each
+  rast.cat.names<- c("Current Suitable Habitat","Refugia Probability","Future Suitable Habitat"," Future Suitable Refugia")
+  
+  df_pixels<-NULL
+  for (i in 1:length(all.group.rasters)) {
+    
+    oneset <- all.group.rasters[[i]]
+    
+    for (k in 1:length(oneset)) {
+      
+      onerast<- oneset[[k]]
+      
+      if (k ==1 ) {
+        
+        q75 <- quantile(terra::values(onerast), probs=0.5, na.rm=TRUE) #### for 50% only
+      }
+      
+      hiqual <- terra::ifel(onerast >= q75, 1, NA) 
+      
+      for (m in 1:length(masks_vect)) {
+        
+        maskedhig <- terra::mask(hiqual, masks_vect[[m]])
+        
+        maskedall <- terra::mask(onerast,  masks_vect[[m]])
+        maskedall <- terra::ifel(maskedall >= 0, 1, NA) 
+        
+        hipix <-terra::global(maskedhig, sum , na.rm=TRUE)
+        all.px <- terra::global(maskedall, sum, na.rm=TRUE)
+        
+        df_pixels_one <- cbind(names(all.group.rasters)[i],rast.cat.names[k], masks_labs[m],all.px, hipix)
+        
+        df_pixels <- rbind(df_pixels, df_pixels_one)
+        
+      }
+      
+      
+    }
+    
+  }
+}
+
+
+summary(df_pixels)
+names(df_pixels) <- c("Migra", "Raster", "Elev", "total", "high")
+df_pixels$not_high <- df_pixels$total-df_pixels$high
+
+
+head(df_pixels)
+
+#reorganizing because of 
+df_pixels.fixed <- within(df_pixels, Raster <- factor(Raster, levels = rast.cat.names))
+df_pixels.fixed <- within(df_pixels.fixed, Migra <- factor(Migra, levels = c("RES", "SDM", "LDM")))
+df_pixels.fixed <- within(df_pixels.fixed, Elev <- factor(Elev, levels = masks_labs))
+
+
+p<-df_pixels.fixed |>
+  tidyr::pivot_longer(cols = high:not_high, names_to = "cat")|>
+  #dplyr::group_by(Migra, Raster)|>
+  ggplot2::ggplot()+
+  ggplot2::geom_col(ggplot2::aes(x = Elev, y = value, fill = cat)#, position = "fill"
+  ) +
+  ggplot2::facet_grid(Migra~ Raster, labeller = "label_both", 
+                      #scales = "free", 
+                      switch = "y")+
+  ggplot2::theme(
+    legend.position = "bottom"
+  )+
+  ggplot2::scale_fill_manual(values=c("#56B4E9", 
+                                      "#D55E00" 
+  ),
+  labels = c("High value", "Other"))+
+  ggplot2::ylab(bquote("Extent  ("* km^2* ")"))+
+  ggplot2::xlab("Elevation")
+
+ggplot2::ggsave(p, filename = "elevationbinnsv3.png", path = "plots/", units = "in", width = 16, height = 11, dpi = 300, bg = "white")
+
+#to visualize the bins
+
+
+par(mfrow = c(1,6))
+terra::plot(maskEle01, legend = FALSE)
+
+terra::plot(terra::vect(bcr), add = TRUE)
+terra::plot(maskEle02, legend = FALSE)
+terra::plot(terra::vect(bcr), add = TRUE)
+
+terra::plot(maskEle03, legend = FALSE)
+terra::plot(terra::vect(bcr), add = TRUE)
+
+terra::plot(maskEle04, legend = FALSE)
+terra::plot(terra::vect(bcr), add = TRUE)
+
+terra::plot(maskEle05, legend = FALSE)
+terra::plot(terra::vect(bcr), add = TRUE)
+
+terra::plot(maskEle06, legend = FALSE)
+terra::plot(terra::vect(bcr), add = TRUE)
 
 ############## NOT USED
 ###############################################
