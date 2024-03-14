@@ -2,7 +2,7 @@
 ################### Produce group classification to sum and plot ################### 
 
 #preliminary objects (spp vectors, shapes, rasters, and limits)
-{
+system.time({
   ####### 1) prep files and folders
   
 #load classification file and make make vectors with codes
@@ -65,21 +65,15 @@ LDM.spp = c(LDM, rep(NA, max.len - length(LDM)))
 RES.spp = c(RES, rep(NA, max.len - length(RES)))
 cat.spp.df<-data.frame(SDM.spp, LDM.spp, RES.spp)
 #write.csv(cat.spp.df, "data/cat.spp.df.csv")
+
 num.spp <- c(length(RES), length(SDM), length(LDM))
 
 #load maps
-NA_CEC_Eco_Level2 <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/NA_Terrestrial_Ecoregions_v2_Level_II_Shapefile/NA_Terrestrial_Ecoregions_v2_level2.shp") #### new 2021 version HUGE SHAPEFILE
-BCR4.1_USACAN<- NA_CEC_Eco_Level2|>
-   dplyr::filter(NameL2_En == "Taiga Cordillera")
 
-BCR4.0_USACAN<- NA_CEC_Eco_Level2|>
-   dplyr::filter(NameL2_En == "Boreal Cordillera")
+#previously extracted Ecoregions level 2 from CEC ecoregions
+BCR4.1_USACAN<-sf::st_read("C:/Users/vanoordtlahozf/OneDrive - EC-EC/Documents/github/BorealRefugiaYT/data/BCR4/BCR4.1_USACAN.shp")
+BCR4.0_USACAN  <- sf::st_read("C:/Users/vanoordtlahozf/OneDrive - EC-EC/Documents/github/BorealRefugiaYT/data/BCR4/BCR4.0_USACAN.shp")
 
-
-
-
-#BCR4.1_USACAN<-sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.1_USACAN.shp")
-#BCR4.0_USACAN  <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/cordillera breakdown/BCR4.0_USACAN.shp")
 canada <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_CAN_shp/gadm36_CAN_1.shp")
 USA <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_USA_shp/gadm36_USA_0.shp")
 
@@ -109,7 +103,7 @@ NA_rast <-NA_rast[[1]]
 
 NA_rast <- terra::ifel(is.na(NA_rast), NA, 1) # NA are ocean and high climate modeled values (nonsensical)
 #load a bird refugia raster
-"data/YT Boreal Refugia Drive/bootstrapped rasters/BootstrapRasters"
+#"data/YT Boreal Refugia Drive/bootstrapped rasters/BootstrapRasters"
 bird_rast <- terra::rast("data/YT Boreal Refugia Drive/bootstrapped rasters/BootstrapRasters/ALFL_FutureRef.tif")
 terra::crs(bird_rast)<-rast.crs
 NA_rast <-terra::crop(NA_rast,bird_rast)
@@ -120,32 +114,11 @@ terra::crs(NA_rast.crs) <- rast.crs
 rm(NAKey) 
 rm("Norm1991")
 
-level3<- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/NA_Terrestrial_Ecoregions_v2_Level_III_Shapefile/NA_Terrestrial_Ecoregions_v2_level3.shp")
-
-ecor_713 <- level3|>
-  dplyr::filter(LEVEL3 == "7.1.3")|>
-  sf::st_transform(rast.crs)
-
-eco_3.1 <- NA_CEC_Eco_Level2 |>
-  dplyr::filter(LEVEL2 == "3.1")|>
-  sf::st_transform(rast.crs)
-
-taigacord.crs<- NA_CEC_Eco_Level2|>
-  dplyr::filter(NameL2_En == "Taiga Cordillera")|>
-  sf::st_transform(rast.crs)
-
-borealcord.crs<- NA_CEC_Eco_Level2|>
-  dplyr::filter(NameL2_En == "Boreal Cordillera")|>
-  sf::st_transform(rast.crs)
-
-rm(NA_CEC_Eco_Level2)
-rm(level3)
-# area of eco 3.1 outside the previous rasters
-#eco31_out <- sf::st_difference(eco_3.1, usa_crop) 
 
 #usa_can_crop <- sf::st_union(canada, USA) # dont do this, keep each country separate
 
 usa_crop <- sf::st_transform(USA, rast.crs )
+rm(USA) ### improve speed of this section by saving and just loading Alaska
 
 usa_crop <- sf::st_crop(usa_crop, c(xmin=as.numeric(terra::ext(bird_rast)[1]), 
                                         xmax=as.numeric(terra::ext(bird_rast)[2]), 
@@ -154,7 +127,7 @@ usa_crop <- sf::st_crop(usa_crop, c(xmin=as.numeric(terra::ext(bird_rast)[1]),
 ))
 
 canada_crop <- sf::st_transform(canada, rast.crs )
-
+rm(canada) ### improve speed of this section by saving and just loading Provinces needed
 canada_crop <- sf::st_crop(canada_crop, c(xmin=as.numeric(terra::ext(bird_rast)[1]), 
                                 xmax=as.numeric(terra::ext(bird_rast)[2]), 
                                 ymin=as.numeric(terra::ext(bird_rast)[3]), 
@@ -211,13 +184,7 @@ bcr <- sf::st_as_sf(bcr)
 bcr <- sf::st_transform(bcr, crs =rast.crs) # shapefile of the 2 ecoregions of interest
 
 
-
-
-#area.bcr
-###
-
-
-
+#protected areas
 alaska.pas <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/CEC_NA_PA_GEO_09_09_USA_ALASKA_1/CEC_NA_PA_GEO_09_09_USA_ALASKA_1.shp")
 
 
@@ -243,7 +210,7 @@ CPCAD1 <- CPCAD|>
   dplyr::filter(IUCN_CAT %in% c("Ib" , "III", "II" , "Ia" , "IV" )) |>
   dplyr::filter(LOC_E %in% c("Yukon" , "British Columbia", "Northwest Territories")) |>
   sf::st_transform(rast.crs)
-
+rm(crs_CPCAD,CPCAD )
 #unique(CPCAD1$NAME_E)
 #length(unique(CPCAD1$NAME_E))
 
@@ -263,7 +230,7 @@ units(area.yukon_PAs_crs) <- units::as_units("km2")
 yukon <- canada_crop|>
    dplyr::filter(NAME_1 == "Yukon")|>
   sf::st_transform(rast.crs)
-}
+})
 
 ################################################################################################
 ################################################################################################
@@ -298,7 +265,6 @@ yukon <- canada_crop|>
   
   stacks.mean.vals <- NULL
   high.pa.vals <- NULL
-  p75s<- NULL
   startnum<-NULL
   categoryCol <- NULL
   
@@ -506,7 +472,7 @@ yukon <- canada_crop|>
     high.areas
     
     #switch save name for MIGRA and POP based runs
-    #write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
+    write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
     
     
     
@@ -552,7 +518,7 @@ yukon <- canada_crop|>
     print(high.pa.area)
     
     #switch save name for MIGRA and POP based runs
-    #write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
+    write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
     
   }
   end.time <- Sys.time()
@@ -570,7 +536,8 @@ yukon <- canada_crop|>
 # all in one 3 x 3 panel
 
 #prep hillshade if used
-{topo.folder <- "data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Topography/"
+{
+  topo.folder <- "data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Topography/"
 
 
 #load elevation raster
@@ -597,16 +564,10 @@ asp <- terra::terrain(mdt, "aspect", unit = "radians")
 #terra::plot(asp)
 
 
+h<-terra::shade(sl, asp, angle = c(45, 45, 45, 80), direction = c(225, 270, 315, 135))
 
 
-h1 <- terra::shade(sl, asp, angle = 45, direction = 225,normalize= TRUE)
-h2 <- terra::shade(sl, asp, angle = 45, direction = 270,normalize= TRUE)
-h3 <- terra::shade(sl, asp, angle = 45, direction = 315,normalize= TRUE)
-h4 <- terra::shade(sl, asp, angle = 80, direction = 135,normalize= TRUE)
-
-stack1 <- c(h1, h2, h3, h4)
-
-hill_single <- terra::app(stack1, "mean")
+hill_single <- Reduce(mean, h)
 
 
 
@@ -626,365 +587,195 @@ groupings_labs <- c("Decreasers","Increasers", "No change")
                  
 #LOOP for plots of stacks 
 { begin.time <- Sys.time()
-
-rast.cat.names<- c("Current Suitable Habitat","Refugia Probability","Future Suitable Habitat"," Future Suitable Refugia")
-group_plots<- NULL # list, will hold the  3 cowplots (of 4 plots) per migratory iteration, for plotting and saving at the end
-
-three.cat.list<- NULL # for the 3 plots of each iteration
-#groupings_labs
-
-turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
-
-rast.cat.namesShort <-  rast.cat.names[c(1,2,4)] #### this subsets to only Curr, Ref, and Refxsuit
-
-for (m in 1:length(all.group.rasters)) {
   
-  three.cats <- all.group.rasters[[m]][c(1,2,4)] # this subsets to only Curr, Ref, and Refxsuit
-  #three.cats <- all.group.rasters[[m]] # full set if 3x4 is wanted
+  rast.cat.names<- c("Current Suitable Habitat","Refugia Probability","Future Suitable Habitat"," Future Suitable Refugia")
+  group_plots<- NULL # list, will hold the  3 cowplots (of 4 plots) per migratory iteration, for plotting and saving at the end
   
-  print(paste("Plotting", groupings_labs[m]))
+  three.cat.list<- NULL # for the 3 plots of each iteration
+  #groupings_labs
   
-  current<-three.cats[[1]]
+  turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
   
-  max.val <- max(terra::values(current), na.rm = TRUE)
-  min.val <- min(terra::values(current), na.rm = TRUE)
+  rast.cat.namesShort <-  rast.cat.names[c(1,2,4)] #### this subsets to only Curr, Ref, and Refxsuit
   
-  if (m == 1) { #to include title only on first row
-    for (j in 1:length(three.cats)) {
-      sum.raster <- three.cats[[j]]# a raster
-        if (j==3) {
-          
-          plot.one <- ggplot2::ggplot()+
-            ggplot2::geom_sf(data = poly, fill = "grey") +
-            ggplot2::geom_sf(data = usa_crop, fill = "white")+
-            ggplot2::geom_sf(data = canada_crop, fill = "white")+
-              ggplot2::geom_tile(data = hilldf_single,
-                                   ggplot2::aes(x, y, fill = hillshade),
-                                   show.legend = FALSE) +
-              ggplot2::scale_fill_distiller(palette = "Greys") +
-              ggnewscale::new_scale_fill()+
-              
-            tidyterra::geom_spatraster(data =sum.raster, alpha =0.7)+
-              
-            ggplot2::geom_sf(data = usa_crop, alpha =0)+
-            ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-            ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-            ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-            ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                              ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                              expand = FALSE)+
-            ggplot2::theme_bw()+
-            #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-            ggplot2::scale_fill_gradientn( name = "Spp",
-              labels = scales::label_number(accuracy = 1),
-              na.value = "transparent",
-              colors = c(
-                turbo_pal 
-              ),
-              values = scales::rescale(
-                sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
-                to = c(0, 1)
-              ),
-              oob = scales::squish,
-              limits = c(0, num.spp[m])
-            ) +
-            ggplot2::theme(
-              axis.title = ggplot2::element_blank(),
-              text= ggplot2::element_text(size=20),
-              axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
-              plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
-              plot.title =  ggplot2::element_text(hjust = 0.5, face="bold")
-            )+
-            ggplot2::ggtitle(paste(#groupings_labs[m], 
-              rast.cat.namesShort[[j]]))
-          
-          three.cat.list[[j]] <- plot.one # lists the four plots per category
+  for (m in 1:length(all.group.rasters)) {
+    
+    three.cats <- all.group.rasters[[m]][c(1,2,4)] # this subsets to only Curr, Ref, and Refxsuit
+    #three.cats <- all.group.rasters[[m]] # full set if 3x4 is wanted
+    
+    print(paste("Plotting", groupings_labs[m]))
+    
+    current<-three.cats[[1]]
+    
+    max.val <- max(terra::values(current), na.rm = TRUE)
+    min.val <- min(terra::values(current), na.rm = TRUE)
+    
+    if (m == 1) { #to include title only on first row
+      for (j in 1:length(three.cats)) {
+        sum.raster <- three.cats[[j]]# a raster
         
-          }else{if (j==1) {
-          plot.one <-    ggplot2::ggplot()+
-            ggplot2::geom_sf(data = poly, fill = "grey") +
-            ggplot2::geom_sf(data = usa_crop, fill = "white")+
-            ggplot2::geom_sf(data = canada_crop, fill = "white")+
-            ggplot2::geom_tile(data = hilldf_single,
-                                 ggplot2::aes(x, y, fill = hillshade),
-                                 show.legend = FALSE) +
-            ggplot2::scale_fill_distiller(palette = "Greys") +
-            ggnewscale::new_scale_fill()+
-            tidyterra::geom_spatraster(data =sum.raster, alpha =0.7)+
-            ggplot2::geom_sf(data = usa_crop, alpha =0)+
-            ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-            ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-            ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-            ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                              ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                              expand = FALSE)+
-            ggplot2::theme_bw()+
-            #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-            ggplot2::scale_fill_gradientn(
-              na.value = "transparent",
-              colors = c(
-                turbo_pal 
-              ),
-              values = scales::rescale(
-                sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
-                to = c(0, 1)
-              ),
-              oob = scales::squish,
-              limits = c(0, num.spp[m])
-            ) +
-            ggplot2::ylab(groupings_labs[m])+
-            ggplot2::theme(
-              text = ggplot2::element_text(size=20),
-              legend.position = "none",
-              axis.title.y = ggplot2::element_text(face="bold"),
-              axis.title.x = ggplot2::element_blank(),
-              axis.text = ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
-              plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
-              plot.title =  ggplot2::element_text(hjust = 0.5, face="bold")
-            )  +
-            ggplot2::ggtitle(paste(#groupings_labs[m], 
-              rast.cat.namesShort[[j]]))
-          
-          three.cat.list[[j]] <- plot.one # lists the four plots per category
-        }
-          else{
-            
-            plot.one <- ggplot2::ggplot()+
-              ggplot2::geom_sf(data = poly, fill = "grey") +
-              ggplot2::geom_sf(data = usa_crop, fill = "white")+
-              ggplot2::geom_sf(data = canada_crop, fill = "white")+
-              ggplot2::geom_tile(data = hilldf_single,
-                                   ggplot2::aes(x, y, fill = hillshade),
-                                   show.legend = FALSE) +
-              ggplot2::scale_fill_distiller(palette = "Greys") +
-              ggnewscale::new_scale_fill()+
-              tidyterra::geom_spatraster(data =sum.raster, alpha =0.7)+
-              ggplot2::geom_sf(data = usa_crop, alpha =0)+
-              ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-              ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-              ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-              ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                                ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                                expand = FALSE)+
-              ggplot2::theme_bw()+
-              #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-              ggplot2::scale_fill_gradientn(
-                na.value = "transparent",
-                colors = c(
-                  turbo_pal 
-                ),
-                values = scales::rescale(
-                  sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
-                  to = c(0, 1)
-                ),
-                oob = scales::squish,
-                limits = c(0, num.spp[m])
-              ) +
-              ggplot2::theme(
-                axis.title = ggplot2::element_blank(),
-                text= ggplot2::element_text(size=20),
-                axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
-                legend.position = "none",
-                plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
-                plot.title =  ggplot2::element_text(hjust = 0.5, face="bold")
-              )+
-              ggplot2::ggtitle(paste(#groupings_labs[m], 
-                rast.cat.names[[j]]))
-            
-            three.cat.list[[j]] <- plot.one # lists the four plots per category
-            
-            
-          }}
+        plot.one <- ggplot2::ggplot()+
+          ggplot2::geom_sf(data = poly, fill = "grey") +
+          ggplot2::geom_sf(data = usa_crop, fill = "white")+
+          ggplot2::geom_sf(data = canada_crop, fill = "white")+
+          ggplot2::geom_tile(data = hilldf_single,
+                             ggplot2::aes(x, y, fill = hillshade),
+                             show.legend = FALSE) +
+          ggplot2::scale_fill_distiller(palette = "Greys") +
+          ggplot2::xlab(NULL)+
+          ggnewscale::new_scale_fill()+
+          tidyterra::geom_spatraster(data =sum.raster, alpha =0.7)+
+          ggplot2::geom_sf(data = usa_crop, alpha =0)+
+          ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+          ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+          ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+          ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
+                            ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
+                            expand = FALSE)+
+          ggplot2::theme_bw()+
+          #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+          ggplot2::scale_fill_gradientn(name = "score",
+            labels = scales::label_number(accuracy = 1),
+            na.value = "transparent",
+            colors = c(
+              turbo_pal 
+            ),
+            values = scales::rescale(
+              sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
+              to = c(0, 1)
+            ),
+            oob = scales::squish,
+            limits = c(0, num.spp[m])
+          ) +
+          ggplot2:: ylab(groupings_labs[m])+
+          ggplot2::theme(
+            #axis.title = ggplot2::element_blank(),
+            text= ggplot2::element_text(size=20),
+            axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
+            #legend.position = "none",
+            plot.margin = ggplot2::margin(0,0,0,0, "cm"),
+            plot.title =  ggplot2::element_text(hjust = 0.5, face="bold"),
+            axis.title.y = ggplot2::element_text(face="bold")
+          )+
+          ggplot2::ggtitle(paste(#groupings_labs[m], 
+            rast.cat.names[[j]]))
+        
+        three.cat.list[[j]] <- plot.one # lists the four plots per category
+        
+        
+      }
       
-      group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = length(three.cat.list), rel_widths = c(1.365,1.356,1.48)#, rel_heights = c(1.355,1.355,1.456)
-                                            )
-  
-      }
+      ######      group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, 
+      #######                                      ncol = length(three.cat.list), rel_widths = c(1.365,1.356,1.48)#, rel_heights = c(1.355,1.355,1.456)
+      #)
+      
+      group_plots[[m]] <- three.cat.list |> 
+        # Remove the y axis title and the plot title except for the first plot
+        purrr::imap(\(x, y) if (!y == 1) x + ggplot2::labs(y = NULL) else x) |> 
+        patchwork::wrap_plots(guides = "collect")
+      
     }
-   else{ #for all the other row, no title
-     for (j in 1:length(three.cats)) {
-       sum.raster <- three.cats[[j]]# a raster
-       if (j==3) {
-         plot.one <-    ggplot2::ggplot()+
-           ggplot2::geom_sf(data = poly, fill = "grey") +
-           ggplot2::geom_sf(data = usa_crop, fill = "white")+
-           ggplot2::geom_sf(data = canada_crop, fill = "white")+
-           ggplot2::geom_tile(data = hilldf_single,
-                                ggplot2::aes(x, y, fill = hillshade),
-                                show.legend = FALSE) +
-           ggplot2::scale_fill_distiller(palette = "Greys") +
-           ggnewscale::new_scale_fill()+
-           tidyterra::geom_spatraster(data =sum.raster, alpha =0.7)+
-           ggplot2::geom_sf(data = usa_crop, alpha =0)+
-           ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-           ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-           ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-           ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                             ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                             expand = FALSE)+
-           ggplot2::theme_bw()+
-           #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-           ggplot2::scale_fill_gradientn( name = "Spp",
-             na.value = "transparent",
-             colors = c(
-               turbo_pal 
-             ),
-             values = scales::rescale(
-               sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
-               to = c(0, 1)
-             ),
-             oob = scales::squish,
-             limits = c(0, num.spp[m])
-           ) +
-           ggplot2::theme(
-             axis.title = ggplot2::element_blank(),
-             text= ggplot2::element_text(size=20),
-             axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
-             plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")#,
-             #plot.title =  ggplot2::element_text(hjust = 0.5)
-           )#+
-         #ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))}}
-         
-         three.cat.list[[j]] <- plot.one # lists the four plots per category
-       } else{
-         
-         if (j==1) {
-           plot.one <-    ggplot2::ggplot()+
-             ggplot2::geom_sf(data = poly, fill = "grey") +
-             ggplot2::geom_sf(data = usa_crop, fill = "white")+
-             ggplot2::geom_sf(data = canada_crop, fill = "white")+
-             ggplot2::geom_tile(data = hilldf_single,
-                                  ggplot2::aes(x, y, fill = hillshade),
-                                  show.legend = FALSE) +
-             ggplot2::scale_fill_distiller(palette = "Greys") +
-             ggnewscale::new_scale_fill()+
-             tidyterra::geom_spatraster(data =sum.raster, alpha =0.7)+
-             ggplot2::geom_sf(data = usa_crop, alpha =0)+
-             ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-             ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-             ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-             ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                               ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                               expand = FALSE)+
-             ggplot2::theme_bw()+
-             #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-             ggplot2::scale_fill_gradientn(
-               na.value = "transparent",
-               colors = c(
-                 turbo_pal 
-               ),
-               values = scales::rescale(
-                 sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
-                 to = c(0, 1)
-               ),
-               oob = scales::squish,
-               limits = c(0, num.spp[m])
-             ) +
-             ggplot2:: ylab(groupings_labs[m])+
-             ggplot2::theme(
-               text= ggplot2::element_text(size=20),
-               legend.position = "none",
-               axis.title.y = ggplot2::element_text(face="bold"),
-               axis.title.x = ggplot2::element_blank(),
-               
-               axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
-               plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")#,
-               #plot.title =  ggplot2::element_text(hjust = 0.5)
-             )#+
-           #ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))}}
-           
-           three.cat.list[[j]] <- plot.one # lists the four plots per category
-         }else{
-           plot.one <-  ggplot2::ggplot()+
-             ggplot2::geom_sf(data = poly, fill = "grey") +
-             ggplot2::geom_sf(data = usa_crop, fill = "white")+
-             ggplot2::geom_sf(data = canada_crop, fill = "white")+
-             ggplot2::geom_tile(data = hilldf_single,
-                                  ggplot2::aes(x, y, fill = hillshade),
-                                  show.legend = FALSE) +
-             ggplot2::scale_fill_distiller(palette = "Greys") +
-             ggnewscale::new_scale_fill()+
-             tidyterra::geom_spatraster(data =sum.raster, alpha =0.7)+
-             ggplot2::geom_sf(data = usa_crop, alpha =0)+
-             ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-             ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-             ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-             ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                               ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                               expand = FALSE)+
-             ggplot2::theme_bw()+
-             #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-             ggplot2::scale_fill_gradientn(
-               na.value = "transparent",
-               colors = c(
-                 turbo_pal 
-               ),
-               values = scales::rescale(
-                 sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
-                 to = c(0, 1)
-               ),
-               oob = scales::squish,
-               limits = c(0, num.spp[m])
-             ) +
-             ggplot2::theme(
-               axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
-               axis.title = ggplot2::element_blank(),
-               legend.position = "none",
-               plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")#,
-               #plot.title =  ggplot2::element_text(hjust = 0.5)
-             )#+
-           #ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))}}
-           
-           three.cat.list[[j]] <- plot.one # lists the four plots per category
-           
-           
-         }
-         
-         
-       }
-       
-     
-     }
-     group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = length(three.cat.list), rel_widths = c(1.05,1,1.139)#, rel_heights = c(1,1,1) 
-                                           )
-     
-   }
-  
-  print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
-  
-  
-  print(paste("Grouping three sets plots",groupings_labs[m], format(Sys.time(), "%X") ))
-  
-  #cowplot object with 4 maps of each migra group iteration 
-  
-  # if want to save 1 row (one migra group) as an independent png
-  #one_group_4plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = length(three.cat.list) )
-  #ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plotv19",groupings_labs[m], ".png") ,
-  #              path = "plots/", units = "in", width = 30, height = 6.5, dpi = 300, bg = "white")
-     
+    else{ #for all the other row, no title
+      for (j in 1:length(three.cats)) {
+        sum.raster <- three.cats[[j]]# a raster
+        
+        plot.one <-  ggplot2::ggplot()+
+          ggplot2::geom_sf(data = poly, fill = "grey") +
+          ggplot2::geom_sf(data = usa_crop, fill = "white")+
+          ggplot2::geom_sf(data = canada_crop, fill = "white")+
+          ggplot2::geom_tile(data = hilldf_single,
+                             ggplot2::aes(x, y, fill = hillshade),
+                             show.legend = FALSE) +
+          ggplot2::scale_fill_distiller(palette = "Greys") +
+          ggplot2::xlab(NULL)+
+          ggnewscale::new_scale_fill()+
+          tidyterra::geom_spatraster(data =sum.raster, alpha =0.7)+
+          ggplot2::geom_sf(data = usa_crop, alpha =0)+
+          ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+          ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+          ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+          ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
+                            ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
+                            expand = FALSE)+
+          ggplot2::theme_bw()+
+          #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+          ggplot2::scale_fill_gradientn(name = "score",
+            labels = scales::label_number(accuracy = 1),
+            na.value = "transparent",
+            colors = c(
+              turbo_pal 
+            ),
+            values = scales::rescale(
+              sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
+              to = c(0, 1)
+            ),
+            oob = scales::squish,
+            limits = c(0, num.spp[m])
+          ) +
+          ggplot2:: ylab(groupings_labs[m])+
+          ggplot2::theme(
+            axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
+            #axis.title = ggplot2::element_blank(),
+            #legend.position = "none",
+            plot.margin = ggplot2::margin(0,0,0,0, "cm"),
+            text= ggplot2::element_text(size=20),
+            plot.title =  ggplot2::element_text(hjust = 0.5),
+            axis.title.y = ggplot2::element_text(face="bold")
+          )+
+          ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))
+        
+        
+        three.cat.list[[j]] <- plot.one # lists the four plots per category
       }
+      ######group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, 
+      #                                    ncol = length(three.cat.list), rel_widths = c(1.05,1,1.139)#, rel_heights = c(1,1,1) 
+      #)
+      
+      group_plots[[m]] <- three.cat.list |> 
+        purrr::imap(\(x, y) if (!y == 1) x + ggplot2::labs(y = NULL) else x) |> 
+        patchwork::wrap_plots(guides = "collect") &
+        # Get rif of the titles
+        ggplot2::labs(title = NULL)
+      
+    }
+    
+    print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
     
     
-
+    print(paste("Grouping three sets plots",groupings_labs[m], format(Sys.time(), "%X") ))
+    
+    #cowplot object with 4 maps of each migra group iteration 
+    
+    # if want to save 1 row (one migra group) as an independent png
+    #one_group_4plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = length(three.cat.list) )
+    #ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plotv19",groupings_labs[m], ".png") ,
+    #              path = "plots/", units = "in", width = 30, height = 6.5, dpi = 300, bg = "white")
+    
+  }
+  
+  
+  
   print(paste("Saving plots to disk",groupings_labs[m], format(Sys.time(), "%X") ))
   
-
-
-print(paste("Grouping all plots", format(Sys.time(), "%X") ))
-
-group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 #, rel_heights = c(1, 1, 1)
-                                     )
-
-print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
-
-
-ggplot2::ggsave(group_plots.png, filename = "group_plots.v23FORCED3.png", path = "plots/", units = "in", width = 20, height = 22.75, dpi = 300, bg = "white")
-end.time <- Sys.time()
-print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-
-
+  
+  
+  print(paste("Grouping all plots", format(Sys.time(), "%X") ))
+  
+  #group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 #, rel_heights = c(1, 1, 1)
+  #)
+  
+  group_plots.png <- group_plots[[1]]/group_plots[[2]]/group_plots[[3]]
+  
+  print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
+  
+  ggplot2::ggsave(group_plots.png, filename = "group_plots.v25.png", path = "plots/", units = "in", width = 19, height = 21, dpi = 300, bg = "white")
+  end.time <- Sys.time()
+  print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
+  
+  
 }
-#v23 has hillshade
+
+#v25 has hillshade and good sizing
 ## select the right saving name for the plot MIGRA or POP based
 
 
@@ -998,6 +789,124 @@ print(paste("total duration of plotting", round(difftime(end.time,begin.time, un
 
 
 # Maps of 50% q current suit and and future suit refugia over PAs 
+#shaded PAs
+#customized colours after reclassifying to Current only, Future only, and overlap
+
+{ begin.time <- Sys.time()
+
+quant<-0.75
+
+groupings_labs <- c("Residents","Short-distance", "Long-distance")# for plotting only
+
+three.cat.list<-NULL
+for (m in 1:length(all.group.rasters)) { # for each migratory group
+  
+  three.cats <- all.group.rasters[[m]][c(1,4)]
+  
+  current<-three.cats[[1]]
+  q75 <- quantile(terra::values(current), probs=c(quant), na.rm=TRUE)
+  
+  print(paste("Plotting", groupings_labs[m]))
+  
+  # extract and convert high qual areas for Current into 1 category (value 1)
+  new.current <- terra::ifel(current >= q75, 1, 0)
+  #terra::plot(new.current)
+  # extract and convert high qual areas for Futur refugia into 1 category (value 1)
+  new.futRefugia <- terra::ifel(three.cats[[2]] > q75, 2, 0)
+  #terra::plot(new.futRefugia)
+  
+  sumrast <-new.current+new.futRefugia
+  
+  sumrast <- terra::ifel(sumrast > 0, sumrast, NaN)
+  
+  unique(terra::values(sumrast))
+  #terra::plot(sumrast)
+  #test <-terra::as.polygons(sumrast)
+  
+  #terra::plot(test)
+  
+  m1<-
+    as.matrix(
+      data.frame(
+        x = c(#min(terra::values(raster_test), na.rm = TRUE)
+          0,1,2),
+        y = c(1,2,3
+              #max(terra::values(raster_test), na.rm = TRUE)
+        ),
+        z = c(1,2,3) # 1 is present, 2 is future, 3 is overlap
+      )  
+    )
+  
+  m1
+  
+  rr1 <- terra::classify(sumrast, m1, others=NA) 
+  
+  
+  plot.one<-ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =terra::as.factor(rr1)#, alpha = 0.75
+    )+
+    #attempt other colours of viridis
+    #ggplot2::scale_fill_viridis_c( option = "turbo",  na.value="transparent")+ ### DIANA's paper style?
+    
+    #ggplot2::scale_fill_manual( 
+    #na.value="transparent",
+    # values = c("#D55E00","#F0E442", "#0072B2"))+ 
+    ggplot2::scale_fill_manual(na.value="transparent", 
+                               values = c("#D55E00","#0072B2","#F0E442"),
+                               labels = c("Current", "Future", "Overlap")
+    )+
+    #ggnewscale::new_scale_fill()+
+    #tidyterra::geom_spatraster(data =new.futRefugia, alpha = 0.25)+
+    
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+
+    ggplot2::theme_bw()+
+    #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    
+    ggplot2::theme(
+      axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
+      #legend.position = "none",
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
+      plot.title =  ggplot2::element_text(hjust = 0.5, face="bold")
+    )+
+    ggplot2::ggtitle(paste(groupings_labs[m]))+
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
+    ggplot2::geom_sf(data = usa_crop, alpha = 0)+
+    ggplot2::geom_sf(data = canada_crop, alpha = 0)+
+    #ggplot2::geom_sf(data = yukon_PAs_crs, fill = "#073b4c", color = NA, alpha = 0.5 )+
+    ggplot2::coord_sf(xlim=c(terra::ext(new.current)[1], terra::ext(new.current)[2]),
+                      ylim = c(terra::ext(new.current)[3], terra::ext(new.current)[4]),
+                      expand = FALSE)
+  
+  three.cat.list[[m]] <- plot.one # lists the four plots per category
+  
+} 
+#one.group.PAS <- cowplot::plot_grid(plotlist = three.cat.list, ncol = 3, nrow = 1)
+
+one.group.PAS<-three.cat.list |> 
+  # Remove the y axis title and the plot title except for the first plot
+  purrr::imap(\(x, y) if (!y == 1) x + ggplot2::labs(y = NULL) else x) |> 
+  patchwork::wrap_plots(guides = "collect")
+
+ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_50quantCurFutv7optional.png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
+
+print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
+
+plot(one.group.PAS)
+
+end.time <- Sys.time()
+
+print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
+
+
+} 
+
+
+#with outlined PAs
 { begin.time <- Sys.time()
 
 quant<-0.75
@@ -1070,7 +979,7 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
 
 one.group.PAS <- cowplot::plot_grid(plotlist = three.cat.list, ncol = 3, nrow = 1)
 
-ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_25quantCurFut.png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
+#ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_25quantCurFut.png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
 
 print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
 
@@ -1086,7 +995,6 @@ print(paste("total duration of plotting", round(difftime(end.time,begin.time, un
 
 } 
 
-one.group.PAS
 
 ### Quantile plots and PAs
 # 3 x 2 plots suggeted by Anna
