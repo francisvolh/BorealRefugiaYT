@@ -65,7 +65,6 @@ LDM.spp = c(LDM, rep(NA, max.len - length(LDM)))
 RES.spp = c(RES, rep(NA, max.len - length(RES)))
 cat.spp.df<-data.frame(SDM.spp, LDM.spp, RES.spp)
 #write.csv(cat.spp.df, "data/cat.spp.df.csv")
-
 num.spp <- c(length(RES), length(SDM), length(LDM))
 
 #load maps
@@ -88,8 +87,6 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
 #for increasing decreasing population -- WHEN NEEDED, not yet
 #files.future <- list.files("data/YT Boreal Refugia Drive/Files_1991_Future_Mean90CI_rds", full.names = TRUE )
 
-#the directory route
-ref.ras.dir <- "data/YT Boreal Refugia Drive/Jan2024_Rasters_1991_Normal_Refugia and Habitat Suitability/1991_Refugia_Suitabiltiy_Rasters_MEAN/"
 
 
 # produce a raster to clean Ref, suit, and refxsuit rasters
@@ -238,6 +235,8 @@ yukon <- canada_crop|>
 ### including calculation of high value areas surface coverage of ecoregions and  PAs
 ### for GROUPING categories 
 #########################################################################
+groupings_labs <- c("RES","SDM", "LDM") #be sure you have this labels for migratory stacks
+#need to re run after running plots!!!!! or switching to pop based 
 
 # RUN CHUNK tO CHANGE TO POP BASED STACKS
 { 
@@ -249,16 +248,18 @@ yukon <- canada_crop|>
   no_change <- setdiff(groupings,decreasers)
   no_change <- setdiff(no_change,increasers)
   
+ 
+  
   num.spp <- c(length(decreasers), length(increasers), length(no_change))
-  
-  
   groupings_labs <- c("decreasers","increasers", "no_change")
   
 }
 
-#remember!! to re run num.spp and grouping_labs if want to run the respective stacks: migra after pop based, normally!
+#!!!!!!!!!!!!!!!!!!!!!!!
+#remember!!!!!!!!!!!!!!! to re run num.spp and grouping_labs if want to run the respective stacks: migra after pop based, normally!
+# !!!!!!!!!!!!! choose the right labels and stacks type above
 
-#stacks run
+#stacks run for migratory groups!!
 { 
   all.group.rasters<-NULL # list, will hold 3 lists, one per migra group (three cats), with 4 stacked raster each
   all.groups.sd.rasters<-NULL
@@ -267,6 +268,7 @@ yukon <- canada_crop|>
   high.pa.vals <- NULL
   startnum<-NULL
   categoryCol <- NULL
+  
   
   #loop for to run all groups
   begin.time <- Sys.time()
@@ -397,6 +399,8 @@ yukon <- canada_crop|>
   
   qs <-  c(0.25, 0.50, 0.75)
   
+  quantiles_store <- NULL
+  
   for (q in qs) { 
     
     group_area_values<- NULL # dataframe, will hold the q75 surface area values for each migratory group, per raster stack 
@@ -404,15 +408,20 @@ yukon <- canada_crop|>
     
     quant<- q
     group_area_values<-NULL 
+    
     for (n in 1:length(all.group.rasters)) {
       four_area_values<-NULL
       PA_four_area_values<-NULL
+      quants_group <-NULL
       for (m in 1:length(all.group.rasters[[n]])) {
         
         # quantile of one raster (kept it named as q75 but it will change)
         if (m==1) {
           q75 <- quantile(terra::values(all.group.rasters[[n]][[m]]), probs=c(quant), na.rm=TRUE)
+          quants_group<-c(groupings_labs[n], quant, as.numeric(q75) )
         }
+        
+       
         
         sum.test <- terra::ifel(all.group.rasters[[n]][[m]]>=q75, 1, NA) #using lambert equal area allows for this assignment of 1 (sq km) to all cells
         area <-sum(terra::values(sum.test), na.rm = TRUE)
@@ -437,11 +446,13 @@ yukon <- canada_crop|>
       
       pa_group_area_values<- rbind(pa_group_area_values, PA_four_area_values)
       
-      
+      quantiles_store <- rbind( quantiles_store, quants_group)
     }
     
     
+    quants.df<- as.data.frame(quantiles_store)
     
+    #write.csv(quants.df, "data/quantile.values_POP.csv", row.names = FALSE)
     
     df <- as.data.frame(group_area_values)
     
@@ -472,7 +483,7 @@ yukon <- canada_crop|>
     high.areas
     
     #switch save name for MIGRA and POP based runs
-    write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
+    #write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
     
     
     
@@ -518,7 +529,7 @@ yukon <- canada_crop|>
     print(high.pa.area)
     
     #switch save name for MIGRA and POP based runs
-    write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
+    #write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
     
   }
   end.time <- Sys.time()
@@ -578,13 +589,14 @@ hilldf_single <- as.data.frame(hill_single, xy = TRUE)
 names(hilldf_single)<-c("x", "y", "hillshade")
 }
 
-#re run labels for pop based stacks
+#re run labels for plotting Migratory status based stacks
 groupings_labs <- c("Residents","Short-distance", "Long-distance")# for plotting only
-  
+
 #choose this if running the pop bases categories
 groupings_labs <- c("Decreasers","Increasers", "No change")
 
-                 
+
+              
 #LOOP for plots of stacks 
 { begin.time <- Sys.time()
   
@@ -768,7 +780,7 @@ groupings_labs <- c("Decreasers","Increasers", "No change")
   
   print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
   
-  ggplot2::ggsave(group_plots.png, filename = "group_plots.v25.png", path = "plots/", units = "in", width = 19, height = 21, dpi = 300, bg = "white")
+  ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POPUL.png", path = "plots/", units = "in", width = 19, height = 21, dpi = 300, bg = "white")
   end.time <- Sys.time()
   print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
   
@@ -840,8 +852,7 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
   m1
   
   rr1 <- terra::classify(sumrast, m1, others=NA) 
-  
-  
+ 
   plot.one<-ggplot2::ggplot()+
     ggplot2::geom_sf(data = poly, fill = "grey") +
     ggplot2::geom_sf(data = usa_crop, fill = "white")+
@@ -854,9 +865,10 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
     #ggplot2::scale_fill_manual( 
     #na.value="transparent",
     # values = c("#D55E00","#F0E442", "#0072B2"))+ 
-    ggplot2::scale_fill_manual(na.value="transparent", 
+    ggplot2::scale_fill_manual(na.translate = FALSE,
+                                na.value="transparent", 
                                values = c("#D55E00","#0072B2","#F0E442"),
-                               labels = c("Current", "Future", "Overlap")
+                               labels = c("Loss", "Gain", "Retained")
     )+
     #ggnewscale::new_scale_fill()+
     #tidyterra::geom_spatraster(data =new.futRefugia, alpha = 0.25)+
@@ -867,6 +879,7 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
     #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
     
     ggplot2::theme(
+      legend.position = "bottom",
       axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
       #legend.position = "none",
       plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
@@ -877,10 +890,11 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
     ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
     ggplot2::geom_sf(data = usa_crop, alpha = 0)+
     ggplot2::geom_sf(data = canada_crop, alpha = 0)+
-    #ggplot2::geom_sf(data = yukon_PAs_crs, fill = "#073b4c", color = NA, alpha = 0.5 )+
+    ggplot2::geom_sf(data = yukon_PAs_crs, fill = "#073b4c", color = NA, alpha = 0.5 )+
     ggplot2::coord_sf(xlim=c(terra::ext(new.current)[1], terra::ext(new.current)[2]),
                       ylim = c(terra::ext(new.current)[3], terra::ext(new.current)[4]),
-                      expand = FALSE)
+                      expand = FALSE)+
+    ggplot2::labs(fill="")
   
   three.cat.list[[m]] <- plot.one # lists the four plots per category
   
@@ -890,9 +904,9 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
 one.group.PAS<-three.cat.list |> 
   # Remove the y axis title and the plot title except for the first plot
   purrr::imap(\(x, y) if (!y == 1) x + ggplot2::labs(y = NULL) else x) |> 
-  patchwork::wrap_plots(guides = "collect")
+  patchwork::wrap_plots(guides = "collect")  & ggplot2::theme(legend.position = 'bottom')
 
-ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_50quantCurFutv7optional.png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
+ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_50quantCurFutv8.png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
 
 print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
 
@@ -906,509 +920,8 @@ print(paste("total duration of plotting", round(difftime(end.time,begin.time, un
 } 
 
 
-#with outlined PAs
-{ begin.time <- Sys.time()
-
-quant<-0.75
-
-groupings_labs <- c("Residents","Short-distance", "Long-distance")# for plotting only
-
-three.cat.list<-NULL
-for (m in 1:length(all.group.rasters)) { # for each migratory group
-  
-  three.cats <- all.group.rasters[[m]][c(1,4)]
-  
-  current<-three.cats[[1]]
-  q75 <- quantile(terra::values(current), probs=c(quant), na.rm=TRUE)
-  #max.val <- max(terra::values(current), na.rm = TRUE)
-  #min.val <- min(terra::values(current), na.rm = TRUE)
-  
-  
-  
-  print(paste("Plotting", groupings_labs[m]))
-  
-  
-  
-  # extract and convert high qual areas for Current into 1 category (value 1)
-  new.current <- terra::ifel(current >= q75, 1, NA)
-  
-  # extract and convert high qual areas for Futur refugia into 1 category (value 1)
-  new.futRefugia <- terra::ifel(three.cats[[2]] > q75, 1, NA)
-  
-  
-  # plot current and future high values (each as 1 unique category) and PAs utlines
-  
-  
-  plot.one<-ggplot2::ggplot()+
-    ggplot2::geom_sf(data = poly, fill = "grey") +
-    ggplot2::geom_sf(data = usa_crop, fill = "white")+
-    ggplot2::geom_sf(data = canada_crop, fill = "white")+
-    tidyterra::geom_spatraster(data =new.current, alpha = 0.75)+
-    ggplot2::scale_fill_viridis_c( option = "mako", direction = -1, na.value="transparent")+ ### DIANA's paper style?
-    
-    
-    ggnewscale::new_scale_fill()+
-    tidyterra::geom_spatraster(data =new.futRefugia, alpha = 0.25)+
-    ggplot2::scale_fill_viridis_c( option = "rocket",  na.value="transparent")+ ### DIANA's paper style?
-    
-    ggplot2::geom_sf(data = usa_crop, alpha =0)+
-    ggplot2::geom_sf(data = canada_crop, alpha =0)+
-    ggplot2::theme_bw()+
-    #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-    
-    ggplot2::theme(
-      legend.position = "none",
-      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
-      plot.title =  ggplot2::element_text(hjust = 0.5, face="bold")
-    )+
-    ggplot2::ggtitle(paste(groupings_labs[m]))+
-    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
-    ggplot2::geom_sf(data = usa_crop, alpha = 0)+
-    ggplot2::geom_sf(data = canada_crop, alpha = 0)+
-    ggplot2::geom_sf(data = yukon_PAs_crs, color = "green", alpha = 0 )+
-    ggplot2::coord_sf(xlim=c(terra::ext(new.current)[1], terra::ext(new.current)[2]),
-                      ylim = c(terra::ext(new.current)[3], terra::ext(new.current)[4]),
-                      expand = FALSE)
-  
-  #print(paste("Plotting",groupings_labs[m], rast.cat.namesShort[[j]], format(Sys.time(), "%X") ))
-  
-  three.cat.list[[m]] <- plot.one # lists the four plots per category
-  
-} 
-
-one.group.PAS <- cowplot::plot_grid(plotlist = three.cat.list, ncol = 3, nrow = 1)
-
-#ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_25quantCurFut.png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
-
-print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
-
-#sample_plot_list2[[m]]<-cowplot::plot_grid(plotlist = three.cat.list, ncol = 2)
-#sample_plot_PAs_refxsuit <- cowplot::plot_grid(plotlist = sample_plot_list2, nrow = 3)
-
-# ggplot2::ggsave(sample_plot_PAs_refxsuit, filename = "sample_plot_PAs_refxsuitForcedv4.png", path = "plots/", units = "in", width = 15, height = 20, dpi = 300, bg = "white")
-
-end.time <- Sys.time()
-
-print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
 
 
-} 
-
-
-### Quantile plots and PAs
-# 3 x 2 plots suggeted by Anna
-# 1 colum is current with q50% and 75% and the other column is Fut Ref 50 and 75%
-# rows are migratory groups
-
-{ begin.time <- Sys.time()
-  
-  quant<-c(0.5, 0.75)
-  rast.cat.names<- c("Current Suitable Habitat","Refugia Probability","Future Suitable Habitat"," Future Suitable Refugia")
-  
-  groupings_labs <- c("Residents","Short-distance", "Long-distance")# for plotting only
-  
-  final_list<-NULL
-  rast.cat.namesShort <-  rast.cat.names[c(1,4)] #### this subsets to only Curr, Ref, and Refxsuit
-  
-  
-  for (m in 1:length(all.group.rasters)) { # for each migratory group
-    
-    three.cat.list<-NULL
-    
-    three.cats <- all.group.rasters[[m]][c(1,4)]
-    
-    current<-three.cats[[1]]
-    q75 <- quantile(terra::values(current), probs=c(quant[1]), na.rm=TRUE)
-    #max.val <- max(terra::values(current), na.rm = TRUE)
-    #min.val <- min(terra::values(current), na.rm = TRUE)
-    q75.2 <- quantile(terra::values(current), probs=c(quant[2]), na.rm=TRUE)
-    
-    
-    
-    
-    print(paste("Plotting", groupings_labs[m]))
-    
-    
-    for (i in 1:length(three.cats)) { #creates 1 plot for two quantiles for each raster in a grouping 
-      raster1 <- three.cats[[i]]
-      
-      # extract and convert high qual 50% areas for one raster into 1 category (value 1)
-      new.raster1 <- terra::ifel(raster1 > q75, 1, NA)
-      
-      # extract and convert high qual 75% areas for one raster into 1 category (value 1)
-      new.raster2 <- terra::ifel(raster1 > q75.2, 1, NA)
-      
-      plot.one<-ggplot2::ggplot()+
-        ggplot2::geom_sf(data = poly, fill = "grey") +
-        ggplot2::geom_sf(data = usa_crop, fill = "white")+
-        ggplot2::geom_sf(data = canada_crop, fill = "white")+
-        tidyterra::geom_spatraster(data =new.raster2, alpha = 0.75)+
-        ggplot2::scale_fill_viridis_c( option = "mako",#mako is close to blue
-                                       na.value="transparent")+ 
-        
-        
-        ggnewscale::new_scale_fill()+
-        tidyterra::geom_spatraster(data =new.raster1, alpha = 0.5)+
-        ggplot2::scale_fill_viridis_c( option = "rocket", # rocket is close to red  
-                                       na.value="transparent")+ 
-        
-        ggplot2::geom_sf(data = usa_crop, alpha =0)+
-        ggplot2::geom_sf(data = canada_crop, alpha =0)+
-        ggplot2::theme_bw()+
-        ggplot2::theme(
-          legend.position = "none",
-          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
-          plot.title =  ggplot2::element_text(hjust = 0.5, face="bold")
-        )+
-        ggplot2::ggtitle(paste(groupings_labs[m]))+
-        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
-        ggplot2::geom_sf(data = usa_crop, alpha = 0)+
-        ggplot2::geom_sf(data = canada_crop, alpha = 0)+
-        ggplot2::geom_sf(data = yukon_PAs_crs, color = "green", alpha = 0 )+
-        ggplot2::coord_sf(xlim=c(terra::ext(current)[1], terra::ext(current)[2]),
-                          ylim = c(terra::ext(current)[3], terra::ext(current)[4]),
-                          expand = FALSE)+
-        ggplot2::ggtitle(paste( rast.cat.namesShort[[i]]))+
-        ggplot2::ylab(groupings_labs[m])
-      
-      #print(paste("Plotting",groupings_labs[m], rast.cat.namesShort[[j]], format(Sys.time(), "%X") ))
-      
-      three.cat.list[[i]] <- plot.one # lists the TWO  plots per category, each with two quantiles
-      
-    }
-    
-    print(paste("Grouping one group set into a plot",groupings_labs[m], format(Sys.time(), "%X") ))
-    
-    one.group.PAS <- cowplot::plot_grid(plotlist = three.cat.list, ncol = 2, nrow = 1)
-    
-    
-    
-    # plot current and future high values (each as 1 unique category) and PAs utlines
-    
-    final_list[[m]] <- one.group.PAS
-    
-  } 
-  
-  
-  #ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_",groupings_labs[m],".png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
-  
-  print(paste("Grouping all group set plots", format(Sys.time(), "%X") ))
-  
-  final_plots<-cowplot::plot_grid(plotlist = final_list, ncol = 1, nrow =3)
-  
-  ggplot2::ggsave(final_plots, filename = "set3x2PAs2quantilesv4.png", path = "plots/", units = "in", width = 10, height = 15, dpi = 300, bg = "white")
-  
-  end.time <- Sys.time()
-  
-  print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-  
-  
-} 
-
-
-
-############################################################
-############################################################
-##  plot only Current and Ref x Suit for presentation
-## 3 individual 1 x 2 panels (and a final grouped 3 x 2)
-############################################################
-
-{ begin.time <- Sys.time()
-  
-  group_plots<- NULL # list, will hold the  3 cowplots (of 4 plots) per migratory iteration, for plotting and saving at the end
-  
-  three.cat.list<- NULL # for the 3 plots of each iteration
-  #groupings_labs
-  
-  rast.cat.names<- c("Sum Current Suitable Habitat","Sum Refugia Probability","Sum Future Suitable Habitat","Sum Future Suitable Refugia")
-  
-  turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
-  
-  rast.cat.namesShort <-  rast.cat.names[c(1,4)]
-  
-  for (m in 1:length(all.group.rasters)) {
-    
-    three.cats <- all.group.rasters[[m]][c(1,4)]
-    current<-three.cats[[1]]
-    
-    max.val <- max(terra::values(current), na.rm = TRUE)
-    min.val <- min(terra::values(current), na.rm = TRUE)
-    
-    print(paste("Plotting", groupings_labs[m]))
-    
-    for (j in 1:length(three.cats)) {
-      
-      sum.raster <- three.cats[[j]]# a raster
-      
-      
-      plot.one<-ggplot2::ggplot()+
-        ggplot2::geom_sf(data = poly, fill = "grey") +
-        ggplot2::geom_sf(data = usa_crop, fill = "white")+
-        ggplot2::geom_sf(data = canada_crop, fill = "white")+
-        tidyterra::geom_spatraster(data =sum.raster)+
-        ggplot2::geom_sf(data = usa_crop, alpha =0)+
-        ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-        ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                          ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                          expand = FALSE)+
-        ggplot2::theme_bw()+
-        #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-        ggplot2::scale_fill_gradientn(
-          na.value = "transparent",
-          colors = c(
-            turbo_pal 
-          ),
-          values = scales::rescale(
-            sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
-            to = c(0, 1)
-          ),
-          oob = scales::squish,
-          limits = c(0,  num.spp[m])
-        ) +
-        ggplot2::theme(
-          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-        )+
-        ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.namesShort[[j]]))
-      
-      print(paste("Plotting",groupings_labs[m], rast.cat.namesShort[[j]], format(Sys.time(), "%X") ))
-      
-      three.cat.list[[j]] <- plot.one # lists the four plots per category
-      
-    }
-    print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
-    
-    #cowplot object with 4 maps of each migra group iteration 
-    
-    one_group_4plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 2 )
-    #ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plotSHORTv3",groupings_labs[m], ".png") ,
-     #               path = "plots/", units = "in", width = 7.5, height = 3.75, dpi = 300, bg = "white")
-    
-    #group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 2 )
-    #rm(three.plots)
-    
-  } 
-  
-  
-  
-  #print(paste("Grouping all plots", format(Sys.time(), "%X") ))
-  
-  #group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
-  
-  #print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
-  
-  
-  #ggsave(group_plots.png, filename = "group_plots.v13TRIALS.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
-  end.time <- Sys.time()
-  print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-  
-  
-}
-
-## PAs version 2 (masking all out except whats inside the PAs, keep the scale, and set it along the 2 plots from current)
-## sets to plot only Current and Ref x Suit for presentation
-## 3 individual 1 x 2 panels 
-
-{ begin.time <- Sys.time()
-  
-  rast.cat.names<- c("Current Suitable Habitat","Refugia Probability","Future Suitable Habitat"," Future Suitable Refugia")
-  
-  ##Masked RASTER with PAs
-  maskedPATest <- terra::mask(  (all.group.rasters[[1]])[[4]] , yukon_PAs_crs  )
-  #terra::plot(maskedPATest)
-  #terra::plot(maskedPATest)
-  er <- terra::rast(terra::ext(maskedPATest), resolution=terra::res(maskedPATest), crs = rast.crs)
-  terra::values(er) <- 1
-  #terra::plot(er)
-  xx <- terra::ifel( maskedPATest > 0, NA, er ) # use this to cover the raster
-  #terra::plot(xx)
-  xxx <- terra::as.polygons(xx) #make a polygon out of the NAing raster for PAs
-  #terra::plot(xxx)
-
-  sample_plot_list2<- NULL
-  
-  
-  turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
-  
-  rast.cat.namesShort <-  rast.cat.names[c(1,4)]
-  
-  for (m in 1:length(all.group.rasters)) {
-    
-    three.cats <- all.group.rasters[[m]][c(1,4)]
-    #current<-three.cats[[1]]
-    
-    #max.val <- max(terra::values(current), na.rm = TRUE)
-    #min.val <- min(terra::values(current), na.rm = TRUE)
-    
-    print(paste("Plotting", groupings_labs[m]))
-    three.cat.list<-NULL
-    
-    for (j in 1:length(three.cats)) {
-      
-      sum.raster <- three.cats[[j]]# a raster
-      
-      plot.one<-ggplot2::ggplot()+
-        ggplot2::geom_sf(data = poly, fill = "grey") +
-        ggplot2::geom_sf(data = usa_crop, fill = "white")+
-        ggplot2::geom_sf(data = canada_crop, fill = "white")+
-        tidyterra::geom_spatraster(data =sum.raster)+
-        ggplot2::geom_sf(data = usa_crop, alpha =0)+
-        ggplot2::geom_sf(data = canada_crop, alpha =0)+
-        ggplot2::theme_bw()+
-        #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
-        ggplot2::scale_fill_gradientn(
-          na.value = "transparent",
-          colors = c(
-            turbo_pal 
-          ),
-          values = scales::rescale(
-            sort(c(range(terra::values(sum.raster)), c(0,  num.spp[m]))),
-            to = c(0, 1)
-          ),
-          oob = scales::squish,
-          limits = c(0,  num.spp[m])
-        ) +
-        tidyterra::geom_spatvector(
-          data = xxx, fill = "white"#ggplot2::aes(color = "white")
-        )+
-        ggplot2::geom_sf(data = yukon_PAs_crs, alpha = 0 )+
-        ggplot2::theme(
-          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-        )+
-        ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.namesShort[[j]]))+
-        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
-        ggplot2::geom_sf(data = usa_crop, alpha = 0)+
-        ggplot2::geom_sf(data = canada_crop, alpha = 0)+
-        ggplot2::coord_sf(xlim=c(terra::ext(xxx)[1], terra::ext(xxx)[2]),
-                          ylim = c(terra::ext(xxx)[3], terra::ext(xxx)[4]),
-                          expand = FALSE)
-      
-      print(paste("Plotting",groupings_labs[m], rast.cat.namesShort[[j]], format(Sys.time(), "%X") ))
-      
-      three.cat.list[[j]] <- plot.one # lists the four plots per category
-       
-    } 
-    
-    one.group.PAS <- cowplot::plot_grid(plotlist = three.cat.list, ncol = 2)
-    
-    #ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_",groupings_labs[m],".png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
-   
-    print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
-    
-    sample_plot_list2[[m]]<-cowplot::plot_grid(plotlist = three.cat.list, ncol = 2)
-    
-  } 
-  
-  sample_plot_PAs_refxsuit <- cowplot::plot_grid(plotlist = sample_plot_list2, nrow = 3)
-
- # ggplot2::ggsave(sample_plot_PAs_refxsuit, filename = "sample_plot_PAs_refxsuitForcedv4.png", path = "plots/", units = "in", width = 15, height = 20, dpi = 300, bg = "white")
-  
-  end.time <- Sys.time()
-  
-  print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-  
-  
-}
-
-#get one plot.one to just show alone
-#ggplot2::ggsave(plot.one, filename = "one_sample_plot_PAs_refxsuitv3.png", path = "plots/", units = "in", width = 7.5, height = 7.5, dpi = 300, bg = "white")
-
-
-
-
-
-########## Plot standard deviation (sd) of stacks maps
-########## in one 3 x4 panel
-
-{ begin.time <- Sys.time()
-  
-  rast.cat.names<- c("current.SD","refugia.SD","future.SD","refugia x future.SD")
-  group_plots<- NULL # list, will hold the  3 cowplots (of 4 plots) per migratory iteration, for plotting and saving at the end
-  
-  three.cat.list<- NULL # for the 3 plots of each iteration
-  #groupings_labs
-  for (m in 1:length(all.groups.sd.rasters)) {
-    
-    four.sd.cats <- all.groups.sd.rasters[[m]]
-    
-    print(paste("Plotting SD", groupings_labs[m]))
-    
-    for (j in 1:length(four.sd.cats)) {
-      
-      sum.raster <- four.sd.cats[[j]]# a raster
-      
-      # if (j == 1) {
-      
-      # truncate values for better viz FOR NOW DECIDED NOT TO DO IT WITH THE STACKS
-      #mean.val <- mean(terra::values(rast1), na.rm = TRUE)
-      #low.val<- min(terra::values(rast1), na.rm = TRUE)
-      #zmin <- max(mean.val, 0.001, na.rm = TRUE)
-      #zmin <- max(zmin, 0.01, na.rm = TRUE)
-      #zmax <- max(terra::values(rast1), na.rm = TRUE)
-      #q99 <- quantile(terra::values(rast1), probs=c(0.999), na.rm=TRUE)
-      
-      plot.one<-ggplot2::ggplot()+
-        ggplot2::geom_sf(data = poly, fill = "grey") +
-        ggplot2::geom_sf(data = usa_crop, fill = "white")+
-        ggplot2::geom_sf(data = canada_crop, fill = "white")+
-        tidyterra::geom_spatraster(data =sum.raster)+
-        ggplot2::geom_sf(data = usa_crop, alpha =0)+
-        ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
-        ggplot2::coord_sf(xlim=c(terra::ext(ref.sum)[1], terra::ext(ref.sum)[2]),
-                          ylim = c(terra::ext(ref.sum)[3], terra::ext(ref.sum)[4]),
-                          expand = FALSE)+
-        ggplot2::theme_bw()+
-        ggplot2::scale_fill_viridis_c( option = "cividis", # should be low SD is light colour and high is dark
-                                       direction = -1, 
-                                       na.value="transparent")+ ### DIANA's paper style?
-        ggplot2::theme(
-          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
-        )+
-      ggplot2::ggtitle(paste(groupings_labs[m], rast.cat.names[[j]]))#+
-    
-      print(paste("Plotting",groupings_labs[m], rast.cat.names[[j]], format(Sys.time(), "%X") ))
-      
-      
-      
-      three.cat.list[[j]] <- plot.one # lists the four plots per category
-      
-    }
-    print(paste("Grouping three sets plots", format(Sys.time(), "%X") ))
-    
-    #cowplot object with 4 maps of each migra group iteration 
-    
-    
-    #one_group_4plots <- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 4 )
-    #ggplot2::ggsave(one_group_4plots, filename = paste0("one_group_plot",groupings_labs[m], ".png") ,
-     #               path = "plots/", units = "in", width = 30, height = 6.5, dpi = 300, bg = "white")
-    
-    #print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
-    
-    group_plots[[m]]<- cowplot::plot_grid(plotlist = three.cat.list, nrow = 1, ncol = 4 )
-
-  } 
-  
-  
-  
-  print(paste("Grouping all plots", format(Sys.time(), "%X") ))
-  
-  group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = 3, ncol = 1 )
-  
-  print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
-  
-  
-  ggplot2::ggsave(group_plots.png, filename = "group_SDs.v1.png", path = "plots/", units = "in", width = 30, height = 20, dpi = 300, bg = "white")
-  end.time <- Sys.time()
-  print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-  
-  
-}
 
 
 
@@ -1571,168 +1084,137 @@ pixel.vals.df<-pixel.vals.df|>
 
 
 
-############################################################## NOT NEEDED, need to revise if so
-############################################################## especially change the Current dis stack plotting
-##############################################################
-### 4) PLOT all species individually within a category in independent sets per group
-### for all birds in a category #####
-### no calculations
-##############################################################
+######### individual spp current suitabilities
 
-#Curent loop runs over all predefined groups
-{begin.time <- Sys.time()
-
-#files.vect <-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds/",  full.names = TRUE)
-
-all.3.sets<-list()
-
-#loop for to run all groups
-for (k in groupings_labs) {
-  print(paste("Starting", k,"at", begin.time))
+{
+ 
+  turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
   
-  group_plots<- list()### list of plots all spp 4 plots, for each category (to be saved with ggsave)
-  
-  group_spp <- get(k)
-  
-  #compile each set of graphs: ref, suit, ref x suit for all spp within a group (either LDM, SDM, or RES)
-  curr.mean.list <- list() # resets for each grouping run - k iteration in the loop
-  ref.mean.list <- list()
-  suit.mean.list <- list()
-  refxsuit.mean.list <- list()
-  
-  
-  all.spp.plot.names <-  list()
-  
-  #ref.ras1<-NULL
-  #suit.ras1<-NULL
-  #refxsuit.ras1<-NULL
-  
-  for (i in c(group_spp)) {
-    
-    #Load present RDS distribution files and make rasters 
-    print(paste("Working", k, "current dist", i,"at", format(Sys.time(), "%X") ))
-    
-    sample1 <- readRDS(files.vect[grep(i, files.vect)] )
-    ###################
-    
-    Max95<-quantile(sample1$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
-    #q99 <- quantile(terra::values(curr.sum), probs=c(0.999), na.rm=TRUE)
-    
-    #suitscale<-suit/Max95  # scaled against present 95% max 
-    #values(suitscale)[values(suitscale) > 1] = 1  # assign areas that get more suitable (>1) to 1
-    ###################
-    ###################
-    rast1 <- sample1 |>
-      dplyr::mutate(
-        std.mean = Mean/Max95
-      )
-    
-    rast1<-terra::rast(rast1, crs =  rast.crs)  
-    
-    rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
-    
-    rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
-    
-    rast1 <-  terra::crop(rast1, NA_rast) # crop to the extent of the mask, only for current dists, because they are larger
-    rast1 <- terra::mask(rast1, NA_rast.crs) #mask using NAs from env variables 
-    rast1 <- terra::mask(rast1, AKrast) # mask for alaska
-    
-    names(rast1) <- i
-    
-    print(paste("Working", k, "refugia", i,"at", format(Sys.time(), "%X") ))
-    
-    #rasters are sometimes tif or tiff, so the grep() solves it
-    ref.ras1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","Refugia_RCPmean.tif"), files.to.read)])
-    names(ref.ras1)<-terra::varnames(ref.ras1)
-    ref.ras1 <- terra::mask(ref.ras1, NA_rast)#mask using NAs from env variables 
-    ref.ras1 <- terra::mask(ref.ras1, AKrast)
-    
-    
-    print(paste("Working", k, "future dist", i,"at", format(Sys.time(), "%X") ))
-    
-    suit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"ScaledSuitability_RCPmean.tif"), files.to.read)])
-    names(suit.ras1) <- terra::varnames(suit.ras1)
-    suit.ras1 <- terra::mask(suit.ras1, NA_rast)#mask using NAs from env variables 
-    suit.ras1 <- terra::mask(suit.ras1, AKrast)
-    
-    
-    print(paste("Working", k,"ref x future", i,"at", format(Sys.time(), "%X") ))
-    
-    refxsuit.ras1 <- terra::rast(x =  files.to.read[grep(paste0(i,"Suitability_by_Refugia_RCPmean.tif"), files.to.read)])
-    names(refxsuit.ras1) <- terra::varnames(refxsuit.ras1)
-    refxsuit.ras1 <- terra::mask(refxsuit.ras1, NA_rast)#mask using NAs from env variables 
-    refxsuit.ras1 <- terra::mask(refxsuit.ras1, AKrast)
-    
-    
-    curr.mean.list[[i]] <- rast1
-    ref.mean.list[[i]] <- ref.ras1
-    suit.mean.list[[i]] <- suit.ras1
-    refxsuit.mean.list[[i]] <- refxsuit.ras1
-    
-    #all.spp.plot.names[[i]] <- c(paste0(i,".refugia"),paste0(i,".suitability"),paste0(i,".refugia x suit"))
-    
+  Mode <- function(x) {
+    x<-x[!is.na(x)]
+    ux <- unique(x)
+    ux[which.max(tabulate(match(x, ux)))]
   }
   
-  for (j in 1:length(names(ref.mean.list))) {
+  begin.time <- Sys.time()
+  
+  #check color palette to assign highest colour correctly
+  #vir_pal <- c(viridis::viridis(n = 1000, direction = -1))
+  #find a darker shade of the darkest color in the palette
+  #darker<-colorspace::darken("#440154FF", 0.2)
+  #darker
+  
+  startnum<-NULL
+  the.birds <- (c(RES,SDM, LDM))
+  the.birds <- sort(the.birds) # for 1 ordered full spp plot
+  
+  NA_rast1 <-terra::crop(NA_rast,bird_rast)
+  AKrast1 <-terra::crop(AKrast,bird_rast)
+  
+  pixel.vals<-NULL
+  
+  all.plots<-NULL
+  
+  #loop for to run all groups
+  for (k in groupings_labs) {
     
-    #call each species plot from the  category lists
-    current <- curr.mean.list[[j]]
-    refugia <- ref.mean.list[[j]] 
-    suitability <- suit.mean.list[[j]] 
-    refxsuit <- refxsuit.mean.list[[j]] 
+    #for one group
+    group_plots<- list()
     
-    setplots<-c("current", "refugia", "suitability", "refxsuit")
+    group_spp <- get(k)
     
-    one.spp.plot.cat.list<- list() # this will have the 4 plots for each species: a, b, c, d
-    for (t in setplots) { # do it for each element of the 4 lists (each species) 
+    #for the all the species in the group 
+    for (i in c(group_spp)){
+      startnum[[i]]<-i
+
+      rast1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","PresentSuit.tif"), files.to.read)])
       
-      rast1<-get(t)
-      print(paste("Plotting", k, t, i,"at", format(Sys.time(), "%X") ))
+      terra::crs(rast1) <- rast.crs
+      names(rast1) <- i
       
-      plot.one <- ggplot2::ggplot()+
+      mean.val <- mean(terra::values(rast1), na.rm = TRUE)
+      median.val <- median(terra::values(rast1), na.rm = TRUE)
+      
+      mode.val <- Mode(terra::values(rast1))
+      
+      max.val<- max(terra::values(rast1), na.rm = TRUE)
+      zmin <- max(mean.val, 0.001, na.rm = TRUE)
+      
+     lowest <- min(terra::values(rast1), na.rm = TRUE)
+      
+      q99 <- quantile(terra::values(rast1), probs=c(0.999), na.rm=TRUE) #after capping
+      q90 <- quantile(terra::values(rast1), probs=c(0.9), na.rm=TRUE) #after capping
+      
+      pixel.vals <- rbind( pixel.vals, c(k, i, mean.val, median.val, mode.val, lowest, max.val, zmin, q90, q99))
+      
+      plot.onebird<-ggplot2::ggplot()+
         ggplot2::geom_sf(data = poly, fill = "grey") +
         ggplot2::geom_sf(data = usa_crop, fill = "white")+
         ggplot2::geom_sf(data = canada_crop, fill = "white")+
         tidyterra::geom_spatraster(data =rast1)+
         ggplot2::geom_sf(data = usa_crop, alpha =0)+
         ggplot2::geom_sf(data = canada_crop, alpha =0)+       
-        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
-        ggplot2::coord_sf(xlim=c(terra::ext(rast1)[1], terra::ext(rast1)[2]),
-                          ylim = c(terra::ext(rast1)[3], terra::ext(rast1)[4]),
+        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+        ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
+                          ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
                           expand = FALSE)+
         ggplot2::theme_bw()+
-        ggplot2::scale_fill_viridis_c(option = "turbo", direction = -1, na.value="transparent")+ ### DIANA's paper style?
+        #ggplot2:: scale_fill_viridis_c( direction = -1, na.value="transparent")+ ### IF NO SCALING for viz
+        ggplot2::scale_fill_gradientn(
+          colors = c(
+           turbo_pal
+          ),
+          values = scales::rescale(
+            sort(c(range(terra::values(rast1)), c(0, 1))),
+            to = c(0, 1)
+          ),
+          oob = scales::squish,
+          limits = c(0, 1) , na.value = "transparent"
+        ) +
         ggplot2::theme(
           plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
         )+
         ggplot2::ggtitle(names(rast1))
-      print(paste(j,"out of", length(names(ref.mean.list)),"Plotting", k, "species:",names(rast1)))
-      one.spp.plot.cat.list[[t]]<- plot.one
       
+      
+      #print(paste(grep(i, the.birds),"out of", length(the.birds),", Plotting species:",i))
+      print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "density plot", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
+      
+      
+      group_plots[[i]] <- plot.onebird
+      all.plots[[i]]<-plot.onebird
     }
     
-    three.plots <- cowplot::plot_grid(plotlist = one.spp.plot.cat.list, nrow = 1, ncol = 4 )
-    #ggsave(three.plots, filename = "SDM.sum.TERR.png", path = "plots/", units = "in", width = 10, height = 3, dpi = 300, bg = "white")
+    print(paste("Grouping plots", k,"in 1 frame", format(Sys.time(), "%X") ))
     
-    group_plots[[j]]<- three.plots # one spp plots go into the list per migra group
-  } 
+    one.group <-cowplot::plot_grid(plotlist = group_plots, ncol=4 )
+    
+    print(paste("Saving", k, "plots to disk", format(Sys.time(), "%X") ))
+    
+    #ggplot2::ggsave(one.group, filename = (paste0(k,"_currSUITv8.png")), path = "plots/", units = "in", width = 16, height=  3*ceiling(length(group_spp)/4), limitsize = FALSE, dpi = 300, bg = "white")
+    #no scaling plot excluded just used the raw values
+    
+    
+  }
+  all.bird.plots <-cowplot::plot_grid(plotlist = all.plots, ncol=4 )
   
-  group_plots.png <-cowplot::plot_grid(plotlist = group_plots, nrow = length(names(ref.mean.list)), ncol = 1 ) # rows set to the whole number of plots for now, may want to figure out how to save in chunks once this works
-  #maybe cow plot by chunks? 
+  #ggplot2::ggsave(all.bird.plots, filename = (paste0("all_currSUITv8.png")), path = "plots/", units = "in", width = 16, height=  3*ceiling(length(the.birds)/4), limitsize = FALSE, dpi = 300, bg = "white")
   
-  #graph.rows <-  ceiling(length(list.bird.plots)/3) 
+  end.time <- Sys.time()
+  print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
   
-  ggplot2::ggsave(group_plots.png, filename = paste0(k,"_spp_plotsv3.png"), path = "plots/", units = "in", width = 16, height=  3*length(names(ref.mean.list)), limitsize = FALSE, dpi = 300, bg = "white")
-  
-  all.3.sets [[k]] <- group_plots.png
-  
-}
+  }
 
-end.time <- Sys.time()
 
-print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
-}
+pixel.vals.df<- as.data.frame(pixel.vals)
+names(pixel.vals.df) <- c("mig", "spp", "mean.val","median", "lowest", "max.val", "zmin","q90", "q99")
+
+pixel.vals.df<-pixel.vals.df|>
+  dplyr::mutate_at(3:length(names(pixel.vals.df)), as.numeric)|>
+  dplyr::mutate_at(3:length(names(pixel.vals.df)), round, 7)
+
+#write.csv(pixel.vals.df, "data/pixel.vals.df.csv")
 
 
 
