@@ -152,7 +152,7 @@ system.time({
   asp2 <- terra::terrain(mdt2, "aspect", unit = "radians")
   #terra::plot(asp)
   
-  
+  #need to write this raster, if not I will not produce layers, due to the size of the file it seems
   h2<-terra::shade(sl2, asp2, angle = c(45, 45, 45, 80), direction = c(225, 270, 315, 135) ,  
                    filename = 'plots/alt2_shade2.tif', overwrite = TRUE, wopt = list(memmax = 0.6, verbose = TRUE))
   
@@ -166,7 +166,7 @@ system.time({
   
   hilldf_single2 <- as.data.frame(hill_single2, xy = TRUE)
   names(hilldf_single2)<-c("x", "y", "hillshade")
-  
+  gc()
   
   #NA_CEC_Eco_Level2_shortRP<- terra::project(terra::vect(NA_CEC_Eco_Level2_short), rast.crs)
   
@@ -181,9 +181,13 @@ system.time({
   er <- terra::rast(terra::ext(maskedTest), resolution=terra::res(maskedTest), crs = rast.crs)
   terra::values(er) <- 1
   #terra::plot(er)
+  
   xx <- terra::ifel( maskedTest > 0, NA, er ) # use this to cover the raster
+  
   #terra::plot(xx)
+  gc()
   xxx <- terra::as.polygons(xx) #make a polygon out of the NAing raster for PAs
+  
   #terra::plot(xxx, col = "red")
   
   
@@ -232,6 +236,7 @@ system.time({
                       expand = FALSE)+# crop the plotting+
     ggplot2::xlab(NULL)+
     ggplot2::ylab(NULL)+
+    ggplot2::theme_bw()+
     ggplot2::theme(
       legend.position = "none"
     )
@@ -284,7 +289,7 @@ system.time({
   
   #ecoregions_inset
   
-  ggplot2::ggsave(ecoregions_inset, filename = "ecoregions_inset11i.png", path = "plots/", units = "in", width = 10, height = 10, dpi = 300, bg = "white")
+  #ggplot2::ggsave(ecoregions_inset, filename = "ecoregions_insetfinal.png", path = "plots/", units = "in", width = 10, height = 10, dpi = 300, bg = "white")
   
   
   
