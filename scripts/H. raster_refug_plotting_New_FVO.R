@@ -550,10 +550,6 @@ groupings_labs <- c("RES","SDM", "LDM") #be sure you have this labels for migrat
 {
   topo.folder <- "data/YT Boreal Refugia Drive/YK Refugia Code and material/PresentDayNormals/Topography/"
 
-
-#load elevation raster
-elevation <- terra::rast(paste0(topo.folder,"elevation_1KMmd_GMTEDmd.tif"))
-
 #load elevation raster
 elevation <- terra::rast(paste0(topo.folder,"elevation_1KMmd_GMTEDmd.tif"))
 
@@ -562,11 +558,6 @@ elevation <-  terra::crop(elevation, terra::project(bird_rast, "EPSG:4326" ))
 elevation <-  terra::project(elevation, bird_rast )
 
 mdt <-  terra::crop(elevation, bird_rast) 
-
-
-mdtdf <- as.data.frame(mdt, xy = TRUE)
-#head(mdtdf)
-names(mdtdf)[3] <- "alt"
 
 
 sl <- terra::terrain(mdt, "slope", unit = "radians")
@@ -780,7 +771,7 @@ groupings_labs <- c("Decreasers","Increasers", "No change")
   
   print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
   
-  ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POPUL.png", path = "plots/", units = "in", width = 19, height = 21, dpi = 300, bg = "white")
+###ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POPUL.png", path = "plots/", units = "in", width = 19, height = 21, dpi = 300, bg = "white")
   end.time <- Sys.time()
   print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
   
