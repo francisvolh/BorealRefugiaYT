@@ -797,7 +797,7 @@ groupings_labs <- c("Decreasers","Increasers", "No change")
 
 { begin.time <- Sys.time()
 
-quant<-0.75
+quant<-0.5 ## switch quantile and name for saving!!!!!
 
 groupings_labs <- c("Residents","Short-distance", "Long-distance")# for plotting only
 
