@@ -12,7 +12,7 @@ system.time({
 
   #### 
   #### CHSP, LISP, OCWA, TRES as short dist
-  #### 
+  #### now excluded wiwr (as of May 25th 2024)
   
 df.spp.names.merged <- read.csv("data/df.all.birds.merged - CHSP LISP OCWA.csv", #stringsAsFactors = TRUE, 
                                 na.strings=c("NA","NaN", ""))
@@ -70,8 +70,8 @@ num.spp <- c(length(RES), length(SDM), length(LDM))
 #load maps
 
 #previously extracted Ecoregions level 2 from CEC ecoregions
-BCR4.1_USACAN<-sf::st_read("C:/Users/vanoordtlahozf/OneDrive - EC-EC/Documents/github/BorealRefugiaYT/data/BCR4/BCR4.1_USACAN.shp")
-BCR4.0_USACAN  <- sf::st_read("C:/Users/vanoordtlahozf/OneDrive - EC-EC/Documents/github/BorealRefugiaYT/data/BCR4/BCR4.0_USACAN.shp")
+BCR4.1_USACAN<-sf::st_read("data/BCR4/BCR4.1_USACAN.shp")
+BCR4.0_USACAN  <- sf::st_read("data/BCR4/BCR4.0_USACAN.shp")
 
 canada <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_CAN_shp/gadm36_CAN_1.shp")
 USA <- sf::st_read("data/YT Boreal Refugia Drive/YK Refugia Code and material/mapping resources/gadm36_USA_shp/gadm36_USA_0.shp")
@@ -236,13 +236,16 @@ yukon <- canada_crop|>
 ### for GROUPING categories 
 #########################################################################
 groupings_labs <- c("RES","SDM", "LDM") #be sure you have this labels for migratory stacks
-#need to re run after running plots!!!!! or switching to pop based 
+#need to re run after running plots!!!!! or switching from pop based 
+num.spp <- c(length(RES), length(SDM), length(LDM))
+
 
 # RUN CHUNK tO CHANGE TO POP BASED STACKS
 { 
   decreasers <- c("ATTW","GRAJ","BOCH","ATSP","WCSP","SAVS","MOBL","FOSP","OCWA","BLPW",
                   "WIWA","GCTH")
-  increasers <- c("RBNU","CORA","HAWO","BCCH","LISP","NOFL","WIWR","VATH","GCKI","YBSA",
+  increasers <- c("RBNU","CORA","HAWO","BCCH","LISP","NOFL",
+                  "VATH","GCKI","YBSA",
                   "CHSP","COYE","WEWP","YRWA","SWTH","NOWA","YEWA","LEFL","ALFL","HAFL",
                   "WETA" ,"TEWA" ,"WAVI")
   no_change <- setdiff(groupings,decreasers)
@@ -483,7 +486,7 @@ groupings_labs <- c("RES","SDM", "LDM") #be sure you have this labels for migrat
     high.areas
     
     #switch save name for MIGRA and POP based runs
-    #write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
+  # write.csv(high.areas, paste0("E:/BorealRefugiaYT/data/POPhigh.areasv2q", quant*100,".csv") )
     
     
     
@@ -529,7 +532,7 @@ groupings_labs <- c("RES","SDM", "LDM") #be sure you have this labels for migrat
     print(high.pa.area)
     
     #switch save name for MIGRA and POP based runs
-    #write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
+  # write.csv(high.pa.area, paste0("E:/BorealRefugiaYT/data/POPhigh.pa.areav2q",quant*100,".csv"))
     
   }
   end.time <- Sys.time()
@@ -579,6 +582,7 @@ hill_single<- terra::mask(hill_single, bcr) ###masking hillshade to keep the geo
 hilldf_single <- as.data.frame(hill_single, xy = TRUE)
 names(hilldf_single)<-c("x", "y", "hillshade")
 }
+
 
 #re run labels for plotting Migratory status based stacks
 groupings_labs <- c("Residents","Short-distance", "Long-distance")# for plotting only
@@ -771,7 +775,7 @@ groupings_labs <- c("Decreasers","Increasers", "No change")
   
   print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
   
-###ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POPUL.png", path = "plots/", units = "in", width = 19, height = 21, dpi = 300, bg = "white")
+#ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POP.png", path = "E:/BorealRefugiaYT/plots" ,units = "in", width = 19, height = 21, dpi = 300, bg = "white")
   end.time <- Sys.time()
   print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
   
@@ -791,13 +795,13 @@ groupings_labs <- c("Decreasers","Increasers", "No change")
 # Maps of high value areas and quantiles overlapping and PAs
 
 
-# Maps of 50% q current suit and and future suit refugia over PAs 
+# Maps of 25% or 50% q current suit and and future suit refugia over PAs 
 #shaded PAs
 #customized colours after reclassifying to Current only, Future only, and overlap
 
 { begin.time <- Sys.time()
 
-quant<-0.5 ## switch quantile and name for saving!!!!!
+quant<-0.75 ## switch quantile and name for saving!!!!!
 
 groupings_labs <- c("Residents","Short-distance", "Long-distance")# for plotting only
 
@@ -881,7 +885,7 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
     ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
     ggplot2::geom_sf(data = usa_crop, alpha = 0)+
     ggplot2::geom_sf(data = canada_crop, alpha = 0)+
-    ggplot2::geom_sf(data = yukon_PAs_crs, fill = "#073b4c", color = NA, alpha = 0.5 )+
+    ggplot2::geom_sf(data = yukon_PAs_crs, fill = "#073b4c", color = NA, alpha = 0.35 )+
     ggplot2::coord_sf(xlim=c(terra::ext(new.current)[1], terra::ext(new.current)[2]),
                       ylim = c(terra::ext(new.current)[3], terra::ext(new.current)[4]),
                       expand = FALSE)+
@@ -895,13 +899,14 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
 one.group.PAS<-three.cat.list |> 
   # Remove the y axis title and the plot title except for the first plot
   purrr::imap(\(x, y) if (!y == 1) x + ggplot2::labs(y = NULL) else x) |> 
-  patchwork::wrap_plots(guides = "collect")  & ggplot2::theme(legend.position = 'bottom')
+  patchwork::wrap_plots(guides = "collect")  & ggplot2::theme(text= ggplot2::element_text(size=20), legend.position = 'bottom')
 
-ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_50quantCurFutv8.png"), path = "plots/", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
+ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_25quantCurFutv8.png"), 
+                path = "E:/BorealRefugiaYT/plots", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
 
 print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
 
-plot(one.group.PAS)
+#plot(one.group.PAS)
 
 end.time <- Sys.time()
 
@@ -911,6 +916,106 @@ print(paste("total duration of plotting", round(difftime(end.time,begin.time, un
 } 
 
 
+### Only for POP based and 
+###
+### Only for decreasers
+###
+
+{
+  m<-1
+  
+  
+  three.cats <- all.group.rasters[[m]][c(1,4)]
+  
+  current<-three.cats[[1]]
+  q75 <- quantile(terra::values(current), probs=c(quant), na.rm=TRUE)
+  
+  print(paste("Plotting", groupings_labs[m]))
+  
+  # extract and convert high qual areas for Current into 1 category (value 1)
+  new.current <- terra::ifel(current >= q75, 1, 0)
+  #terra::plot(new.current)
+  # extract and convert high qual areas for Futur refugia into 1 category (value 1)
+  new.futRefugia <- terra::ifel(three.cats[[2]] > q75, 2, 0)
+  #terra::plot(new.futRefugia)
+  
+  sumrast <-new.current+new.futRefugia
+  
+  sumrast <- terra::ifel(sumrast > 0, sumrast, NaN)
+  
+  #unique(terra::values(sumrast))
+  #terra::plot(sumrast)
+  #test <-terra::as.polygons(sumrast)
+  
+  #terra::plot(test)
+  
+  m1<-
+    as.matrix(
+      data.frame(
+        x = c(#min(terra::values(raster_test), na.rm = TRUE)
+          0,1,2),
+        y = c(1,2,3
+              #max(terra::values(raster_test), na.rm = TRUE)
+        ),
+        z = c(1,2,3) # 1 is present, 2 is future, 3 is overlap
+      )  
+    )
+  
+  #m1
+  
+  rr1 <- terra::classify(sumrast, m1, others=NA) 
+  
+  plot.one<-ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =terra::as.factor(rr1)#, alpha = 0.75
+    )+
+    #attempt other colours of viridis
+    #ggplot2::scale_fill_viridis_c( option = "turbo",  na.value="transparent")+ ### DIANA's paper style?
+    
+    #ggplot2::scale_fill_manual( 
+    #na.value="transparent",
+    # values = c("#D55E00","#F0E442", "#0072B2"))+ 
+    ggplot2::scale_fill_manual(na.translate = FALSE,
+                               na.value="transparent", 
+                               values = c("#D55E00","#0072B2","#F0E442"),
+                               labels = c("Loss", "Gain", "Retained")
+    )+
+    #ggnewscale::new_scale_fill()+
+    #tidyterra::geom_spatraster(data =new.futRefugia, alpha = 0.25)+
+    
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+
+    ggplot2::theme_bw()+
+    #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    
+    ggplot2::theme(
+      text= ggplot2::element_text(size=20),
+      legend.position = "bottom",
+      axis.text= ggplot2::element_blank(), axis.ticks= ggplot2::element_blank(),
+      #legend.position = "none",
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
+      plot.title =  ggplot2::element_text(hjust = 0.5, face="bold")
+    )+
+    #ggplot2::ggtitle(paste(groupings_labs[m]))+
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
+    ggplot2::geom_sf(data = usa_crop, alpha = 0)+
+    ggplot2::geom_sf(data = canada_crop, alpha = 0)+
+    ggplot2::geom_sf(data = yukon_PAs_crs, fill = "#073b4c", color = NA, alpha = 0.35 )+
+    ggplot2::coord_sf(xlim=c(terra::ext(new.current)[1], terra::ext(new.current)[2]),
+                      ylim = c(terra::ext(new.current)[3], terra::ext(new.current)[4]),
+                      expand = FALSE)+
+    ggplot2::labs(fill="")
+  
+  
+  ggplot2::ggsave(plot.one, filename = paste0("one.group.PAS_50POP.png"), 
+                  path = "E:/BorealRefugiaYT/plots", units = "in", width = 6, height = 7.5, dpi = 300, bg = "white")
+  
+  
+  
+}
 
 
 

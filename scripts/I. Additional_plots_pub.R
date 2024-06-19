@@ -203,7 +203,7 @@ system.time({
     x = c(-2791000, -2791000,  -1198000 , -1198000  ),
     y = c(1522000 , 3386000 , 3386000, 1522000)
   )
-  
+  gc()
 })
 
 
@@ -289,9 +289,10 @@ system.time({
   
   #ecoregions_inset
   
-  #ggplot2::ggsave(ecoregions_inset, filename = "ecoregions_insetfinal.png", path = "plots/", units = "in", width = 10, height = 10, dpi = 300, bg = "white")
+  ggplot2::ggsave(ecoregions_inset, filename = "ecoregions_insetfinal.png",
+  path = "E:/BorealRefugiaYT/plots", units = "in", width = 10, height = 10, dpi = 300, bg = "white")
   
-  
+  gc()
   
 }
 
@@ -302,6 +303,9 @@ system.time({
 ############  <250m, 250-500, 500-750...
 ##################################################################
 
+### RUN INDEPDENDENT OF PREVIOUS chunk as "elevation" maskings breaks
+
+## Run elevation rasters from plotting code in H script
 
 # be carefull with run: Migratory stacks or POP based stacks
 
@@ -423,6 +427,8 @@ df_pixels.fixed <- within(df_pixels.fixed, Elev <- factor(Elev, levels = masks_l
 # for migra based!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 df_pixels.fixed <- within(df_pixels.fixed, Migra <- factor(Migra, levels = c("RES", "SDM", "LDM")))
 
+#write.csv(df_pixels.fixed, "data/df_pixels.fixed.csv")
+
 # for pop based
 # no need to fix levels as will only work with decreasers
 
@@ -452,6 +458,7 @@ p<-
   
   #only for pop based ##### 
   #dplyr::filter(Migra  == "decreasers")|>
+  
   dplyr::arrange(Category)|>
   ggplot2::ggplot()+
   ggplot2::geom_col(ggplot2::aes(x = Elev, y = value, fill = Category)#, position = "fill"
@@ -474,7 +481,15 @@ p<-
   ggplot2::ylab(bquote("Extent  ("* km^2* ")"))+
   ggplot2::xlab("Elevation")
 
-#ggplot2::ggsave(p, filename = "elevationbinnsv6.png", path = "plots/", units = "in", width = 12, height = 11, dpi = 300, bg = "white")
-#ggplot2::ggsave(p, filename = "elevationbinnsv6POP.png", path = "plots/", units = "in", width = 12, height = 5, dpi = 300, bg = "white")
+#ggplot2::ggsave(p, filename = "elevationbinnsv6.png", path = "E:/BorealRefugiaYT/plots/", units = "in", width = 12, height = 11, dpi = 300, bg = "white")
+#ggplot2::ggsave(p, filename = "elevationbinnsv6POP.png", path = "E:/BorealRefugiaYT/plots/", units = "in", width = 12, height = 5, dpi = 300, bg = "white")
 
-
+#percentages table
+elev_percents<-df_pixels.fixed |>
+  dplyr::filter(Raster != "Future Suitable Habitat")|>
+  dplyr::filter(Raster != "Refugia Probability")|>
+  dplyr::group_by(Elev, Migra, Raster)|>
+  dplyr::summarise(
+    top25 = high25/(high25 + anew05 + a_not_high)
+  )
+write.csv(elev_percents, "E:/BorealRefugiaYT/data/elev_percents.csv")
