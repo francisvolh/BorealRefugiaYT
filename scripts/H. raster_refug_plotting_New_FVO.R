@@ -486,7 +486,7 @@ num.spp <- c(length(RES), length(SDM), length(LDM))
     high.areas
     
     #switch save name for MIGRA and POP based runs
-  # write.csv(high.areas, paste0("E:/BorealRefugiaYT/data/POPhigh.areasv2q", quant*100,".csv") )
+   write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
     
     
     
@@ -532,7 +532,7 @@ num.spp <- c(length(RES), length(SDM), length(LDM))
     print(high.pa.area)
     
     #switch save name for MIGRA and POP based runs
-  # write.csv(high.pa.area, paste0("E:/BorealRefugiaYT/data/POPhigh.pa.areav2q",quant*100,".csv"))
+   write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
     
   }
   end.time <- Sys.time()
@@ -582,6 +582,9 @@ hill_single<- terra::mask(hill_single, bcr) ###masking hillshade to keep the geo
 hilldf_single <- as.data.frame(hill_single, xy = TRUE)
 names(hilldf_single)<-c("x", "y", "hillshade")
 }
+
+
+### RUN LABELS FOR PLOTS!!!!!!!!!!!!!!!!!!!
 
 
 #re run labels for plotting Migratory status based stacks
@@ -775,7 +778,7 @@ groupings_labs <- c("Decreasers","Increasers", "No change")
   
   print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
   
-#ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POP.png", path = "E:/BorealRefugiaYT/plots" ,units = "in", width = 19, height = 21, dpi = 300, bg = "white")
+ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POP.png", path = "E:/BorealRefugiaYT/plots" ,units = "in", width = 19, height = 21, dpi = 300, bg = "white")
   end.time <- Sys.time()
   print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
   
