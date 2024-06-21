@@ -486,7 +486,7 @@ num.spp <- c(length(RES), length(SDM), length(LDM))
     high.areas
     
     #switch save name for MIGRA and POP based runs
-   write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
+  # write.csv(high.areas, paste0("data/POPhigh.areasv2q", quant*100,".csv") )
     
     
     
@@ -532,7 +532,7 @@ num.spp <- c(length(RES), length(SDM), length(LDM))
     print(high.pa.area)
     
     #switch save name for MIGRA and POP based runs
-   write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
+  # write.csv(high.pa.area, paste0("data/POPhigh.pa.areav2q",quant*100,".csv"))
     
   }
   end.time <- Sys.time()
@@ -778,7 +778,7 @@ groupings_labs <- c("Decreasers","Increasers", "No change")
   
   print(paste("Saving plots to disk", format(Sys.time(), "%X") ))
   
-ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POP.png", path = "E:/BorealRefugiaYT/plots" ,units = "in", width = 19, height = 21, dpi = 300, bg = "white")
+#ggplot2::ggsave(group_plots.png, filename = "group_plots.v25POP.png", path = "E:/BorealRefugiaYT/plots" ,units = "in", width = 19, height = 21, dpi = 300, bg = "white")
   end.time <- Sys.time()
   print(paste("total duration of plotting", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
   
@@ -904,8 +904,8 @@ one.group.PAS<-three.cat.list |>
   purrr::imap(\(x, y) if (!y == 1) x + ggplot2::labs(y = NULL) else x) |> 
   patchwork::wrap_plots(guides = "collect")  & ggplot2::theme(text= ggplot2::element_text(size=20), legend.position = 'bottom')
 
-ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_25quantCurFutv8.png"), 
-                path = "E:/BorealRefugiaYT/plots", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
+#ggplot2::ggsave(one.group.PAS, filename = paste0("one.group.PAS_25quantCurFutv8.png"), 
+ #               path = "plots", units = "in", width = 15, height = 7.5, dpi = 300, bg = "white")
 
 print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
 
@@ -1013,8 +1013,8 @@ print(paste("total duration of plotting", round(difftime(end.time,begin.time, un
     ggplot2::labs(fill="")
   
   
-  ggplot2::ggsave(plot.one, filename = paste0("one.group.PAS_50POP.png"), 
-                  path = "E:/BorealRefugiaYT/plots", units = "in", width = 6, height = 7.5, dpi = 300, bg = "white")
+  #ggplot2::ggsave(plot.one, filename = paste0("one.group.PAS_50POP.png"), 
+   #               path = "plots", units = "in", width = 6, height = 7.5, dpi = 300, bg = "white")
   
   
   
