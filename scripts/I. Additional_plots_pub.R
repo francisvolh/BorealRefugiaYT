@@ -493,3 +493,277 @@ elev_percents<-df_pixels.fixed |>
     top25 = high25/(high25 + anew05 + a_not_high)
   )
 write.csv(elev_percents, "E:/BorealRefugiaYT/data/elev_percents.csv")
+
+
+# 
+########################################################################
+########################################################################
+# samples of BOCH and BCCH
+
+#set refugia raster results directory
+#the file list
+files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/BootstrapRasters", full.names = TRUE)
+
+
+{
+  
+  boch.lab<- "BOCH"
+  bcch.lab <- "BCCH"
+  
+  
+  #plot curr scaled, refugia, ref x suit and suit
+  refxsuit.boch <- terra::rast(x =  files.to.read[grep(paste0(boch.lab,"_FutureSuit_by_Ref"), files.to.read)])
+  terra::crs(refxsuit.boch) <- rast.crs # assign CRS to avoid warning
+  refxsuit.boch <- terra::mask(refxsuit.boch, NA_rast.crs)
+  refxsuit.boch <- terra::mask(refxsuit.boch, AKrast)
+  
+  refxsuit.bcch <- terra::rast(x =  files.to.read[grep(paste0(bcch.lab,"_FutureSuit_by_Ref"), files.to.read)])
+  terra::crs(refxsuit.bcch) <- rast.crs # assign CRS to avoid warning
+  refxsuit.bcch <- terra::mask(refxsuit.bcch, NA_rast.crs)
+  refxsuit.bcch <- terra::mask(refxsuit.bcch, AKrast)
+  
+  ref.boch <- terra::rast(x = files.to.read[grep(paste0(boch.lab,"_FutureRef.tif"), files.to.read)])
+  
+  terra::crs(ref.boch) <- rast.crs # assign crs to avoid warning
+  ref.boch <- terra::mask(ref.boch, NA_rast.crs)
+  ref.boch <- terra::mask(ref.boch, AKrast)
+  
+  
+  ref.bcch <- terra::rast(x = files.to.read[grep(paste0(bcch.lab,"_FutureRef.tif"), files.to.read)])
+  
+  terra::crs(ref.bcch) <- rast.crs # assign crs to avoid warning
+  ref.bcch <- terra::mask(ref.bcch, NA_rast.crs)
+  ref.bcch <- terra::mask(ref.bcch, AKrast)
+  
+  #suit.boch <- terra::rast(x =  files.to.read[grep(paste0(boch.lab,"ScaledSuitability_RCPmean.tif"), files.to.read)])
+  #terra::crs(suit.boch) <- rast.crs # assign CRS to avoid warning
+  #suit.boch <- terra::mask(suit.boch, NA_rast.crs)
+  #suit.boch <- terra::mask(suit.boch, AKrast)
+  
+  
+  boch.plot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =refxsuit.boch)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
+                      ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Suitable refugia for", boch.lab))
+  
+  bcch.plot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =refxsuit.bcch)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.bcch)[1], terra::ext(refxsuit.bcch)[2]),
+                      ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Suitable refugia for", bcch.lab))
+  
+  
+  sample_boch_bcch <- cowplot::plot_grid(bcch.plot, boch.plot , labels = c("A", "B"
+  ), 
+  #rel_widths = c(1.75, 2, 2),  
+  nrow = 1
+  )
+  
+  ggplot2::ggsave(sample_boch_bcch, filename = paste0("sample_boch_bcch.png") ,
+                  path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
+  
+  
+  
+  #not scaled current version
+  
+  #boch.curr <- readRDS(files.vect[grep(boch.lab, files.vect)] )
+  #Max95<-quantile(boch.curr$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+  
+  #rast1 <- boch.curr |>
+  # dplyr::mutate(
+  #  std.mean = Mean/Max95
+  #  )
+  #rast1<-terra::rast(rast1, crs =  rast.crs)  
+  #rast1 <- terra::ifel(rast1 >=1, 1, rast1 ) # cap to a max of 1
+  
+  #rast1 <- rast1[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
+  #terra::crs(rast1) <- rast.crs # assign CRS to avoid warning
+  #rast1 <- terra::crop(rast1, NA_rast.crs)
+  
+  #rast1 <- terra::mask(rast1, NA_rast.crs)
+  #rast1 <- terra::mask(rast1, AKrast)
+  
+  bcch.curr <- terra::rast(x =  files.to.read[grep(paste0(bcch.lab,"_PresentSuit"), files.to.read)])
+  
+  boch.curr <- terra::rast(x =  files.to.read[grep(paste0(boch.lab,"_PresentSuit"), files.to.read)])
+  
+  #bcch.curr <- readRDS(files.vect[grep(bcch.lab, files.vect)] )
+  #Max95<-quantile(bcch.curr$Mean, 0.95, na.rm=TRUE) #top 95% density of Mean
+  
+  #rast2 <- bcch.curr |>
+  # dplyr::mutate(
+  #  std.mean = Mean/Max95
+  #  )
+  #rast2<-terra::rast(rast2, crs =  rast.crs)  
+  
+  #rast2 <- terra::ifel(rast2 >=1, 1, rast2 ) # cap to a max of 1
+  
+  #rast2 <- rast2[[4]] # dplyr::select only the Mean values layer, not the standardized/scaled anymore [[4]]
+  #terra::crs(rast2) <- rast.crs # assign CRS to avoid warning
+  #rast2<- terra::crop(rast2, NA_rast.crs)
+  
+  #rast2 <- terra::mask(rast2, NA_rast.crs)
+  #rast2 <- terra::mask(rast2, AKrast)
+  
+  
+  boch.curplot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =boch.curr)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
+                      ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Current suitable hab.", boch.lab))+
+    ggplot2::scale_size_continuous(range = c(0, 1.00))
+  
+  bcch.curplot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =bcch.curr)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.bcch)[1], terra::ext(refxsuit.bcch)[2]),
+                      ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Current suitable hab. for", bcch.lab))
+  
+  
+  
+  
+  
+  sample_boch_bcchCUR <- cowplot::plot_grid(bcch.curplot, boch.curplot , labels = c("A", "B"
+  ), 
+  #rel_widths = c(1.75, 2, 2),  
+  nrow = 1
+  )
+  
+  
+  #boch.suit.plot <- ggplot2::ggplot()+
+  # ggplot2::geom_sf(data = poly, fill = "grey") +
+  #ggplot2::geom_sf(data = usa_crop, fill = "white")+
+  #ggplot2::geom_sf(data = canada_crop, fill = "white")+
+  #tidyterra::geom_spatraster(data =suit.boch)+
+  #ggplot2::geom_sf(data = usa_crop, alpha =0)+
+  #ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+  #ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+  #ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+  #ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
+  #                 ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
+  #                expand = FALSE)+
+  #ggplot2::theme_bw()+
+  #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+  #ggplot2::theme(
+  # plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+  #)+
+  #ggplot2::ggtitle(paste("Future suitability for", boch.lab))
+  
+  ggplot2::ggsave(sample_boch_bcchCUR, filename = paste0("sample_boch_bcchSuitPresent.png") ,
+                  path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
+  
+  
+  #och.plots <- cowplot::plot_grid(boch.curplot, boch.refplot, #boch.suit.plot, 
+  #                               boch.plot, rel_widths = c(1.95, 2, 2,2),  labels = c("A", "B","C", "D"), nrow = 1)
+  
+  #ggplot2::ggsave(boch.plots, filename = paste0("sample_boch.plots.png") ,
+  #               path = "plots/", units = "in", width = 15, height = 3.75, dpi = 300, bg = "white")
+  
+  boch.refplot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =ref.boch)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.bcch)[1], terra::ext(refxsuit.bcch)[2]),
+                      ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Refugia probability for",boch.lab))
+  
+  
+  
+  bcch.refplot <- ggplot2::ggplot()+
+    ggplot2::geom_sf(data = poly, fill = "grey") +
+    ggplot2::geom_sf(data = usa_crop, fill = "white")+
+    ggplot2::geom_sf(data = canada_crop, fill = "white")+
+    tidyterra::geom_spatraster(data =ref.bcch)+
+    ggplot2::geom_sf(data = usa_crop, alpha =0)+
+    ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+    ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=1.1 ,color = "black", alpha = 0)+
+    ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.bcch)[1], terra::ext(refxsuit.bcch)[2]),
+                      ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
+                      expand = FALSE)+
+    ggplot2::theme_bw()+
+    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+    )+
+    ggplot2::ggtitle(paste("Refugia probability for",bcch.lab))
+  
+  
+  sample_boch_bcchREF <- cowplot::plot_grid(bcch.refplot, boch.refplot , labels = c("A", "B"
+  ), 
+  #rel_widths = c(1.75, 2, 2),  
+  nrow = 1
+  )
+  
+  
+  
+  
+  ggplot2::ggsave(sample_boch_bcchREF, filename = paste0("sample_boch_bcchREF.png") ,
+                  path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
+  
+  
+  
