@@ -507,6 +507,9 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
 
 {
   
+  turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
+  
+  
   boch.lab<- "BOCH"
   bcch.lab <- "BCCH"
   
@@ -553,8 +556,21 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
     ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
                       ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
                       expand = FALSE)+
+    ggplot2::scale_fill_gradientn(name = "score",
+                                  labels = scales::label_number(accuracy = 0.01),
+                                  na.value = "transparent",
+                                  colors = c(
+                                   turbo_pal 
+                                  ),
+                                  values = scales::rescale(
+                                    sort(c(range(terra::values(refxsuit.boch)), c(0,  1))),
+                                    to = c(0, 1)
+                                  ),
+                                  oob = scales::squish,
+                                  limits = c(0, 1)
+    )+
     ggplot2::theme_bw()+
-    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    #ggplot2::scale_fill_viridis_c( name = "score", option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
     ggplot2::theme(
       plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
     )+
@@ -573,7 +589,20 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
                       ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
                       expand = FALSE)+
     ggplot2::theme_bw()+
-    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    #ggplot2::scale_fill_viridis_c(name = "score", option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::scale_fill_gradientn(name = "score",
+                                  labels = scales::label_number(accuracy = 0.01),
+                                  na.value = "transparent",
+                                  colors = c(
+                                    turbo_pal 
+                                  ),
+                                  values = scales::rescale(
+                                    sort(c(range(terra::values(refxsuit.bcch)), c(0,  1))),
+                                    to = c(0, 1)
+                                  ),
+                                  oob = scales::squish,
+                                  limits = c(0, 1)
+    )+
     ggplot2::theme(
       plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
     )+
@@ -586,8 +615,8 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
   nrow = 1
   )
   
-  ggplot2::ggsave(sample_boch_bcch, filename = paste0("sample_boch_bcch.png") ,
-                  path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
+  #ggplot2::ggsave(sample_boch_bcch, filename = paste0("sample_boch_bcchv2.png") ,
+         #         path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
   
   
   
@@ -645,8 +674,19 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
     ggplot2::coord_sf(xlim=c(terra::ext(refxsuit.boch)[1], terra::ext(refxsuit.boch)[2]),
                       ylim = c(terra::ext(refxsuit.boch)[3], terra::ext(refxsuit.boch)[4]),
                       expand = FALSE)+
-    ggplot2::theme_bw()+
-    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::scale_fill_gradientn(name = "score",
+                                  labels = scales::label_number(accuracy = 0.01),
+                                  na.value = "transparent",
+                                  colors = c(
+                                   turbo_pal 
+                                  ),
+                                  values = scales::rescale(
+                                    sort(c(range(terra::values(boch.curr)), c(0,  1))),
+                                    to = c(0, 1)
+                                  ),
+                                  oob = scales::squish,
+                                  limits = c(0, 1)
+    )+
     ggplot2::theme(
       plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
     )+
@@ -666,7 +706,20 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
                       ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
                       expand = FALSE)+
     ggplot2::theme_bw()+
-    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    #ggplot2::scale_fill_viridis_c(name = "score",  option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::scale_fill_gradientn(name = "score",
+                                  labels = scales::label_number(accuracy = 0.01),
+                                  na.value = "transparent",
+                                  colors = c(
+                                    turbo_pal 
+                                  ),
+                                  values = scales::rescale(
+                                    sort(c(range(terra::values(bcch.curr)), c(0,  1))),
+                                    to = c(0, 1)
+                                  ),
+                                  oob = scales::squish,
+                                  limits = c(0, 1)
+    )+
     ggplot2::theme(
       plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
     )+
@@ -702,8 +755,8 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
   #)+
   #ggplot2::ggtitle(paste("Future suitability for", boch.lab))
   
-  ggplot2::ggsave(sample_boch_bcchCUR, filename = paste0("sample_boch_bcchSuitPresent.png") ,
-                  path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
+ # ggplot2::ggsave(sample_boch_bcchCUR, filename = paste0("sample_boch_bcchSuitPresentv2.png") ,
+  #                path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
   
   
   #och.plots <- cowplot::plot_grid(boch.curplot, boch.refplot, #boch.suit.plot, 
@@ -725,7 +778,20 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
                       ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
                       expand = FALSE)+
     ggplot2::theme_bw()+
-    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    #ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::scale_fill_gradientn(name = "score",
+                                  labels = scales::label_number(accuracy = 0.01),
+                                  na.value = "transparent",
+                                  colors = c(
+                                   turbo_pal 
+                                  ),
+                                  values = scales::rescale(
+                                    sort(c(range(terra::values(ref.boch)), c(0,  1))),
+                                    to = c(0, 1)
+                                  ),
+                                  oob = scales::squish,
+                                  limits = c(0, 1)
+    )+
     ggplot2::theme(
       plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
     )+
@@ -746,7 +812,20 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
                       ylim = c(terra::ext(refxsuit.bcch)[3], terra::ext(refxsuit.bcch)[4]),
                       expand = FALSE)+
     ggplot2::theme_bw()+
-    ggplot2::scale_fill_viridis_c( option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    #ggplot2::scale_fill_viridis_c( name = "score", option = "turbo",direction = -1, na.value="transparent")+ ### DIANA's paper style?
+    ggplot2::scale_fill_gradientn(name = "score",
+                                  labels = scales::label_number(accuracy = 0.01),
+                                  na.value = "transparent",
+                                  colors = c(
+                                    turbo_pal 
+                                  ),
+                                  values = scales::rescale(
+                                    sort(c(range(terra::values(ref.boch)), c(0,  1))),
+                                    to = c(0, 1)
+                                  ),
+                                  oob = scales::squish,
+                                  limits = c(0, 1)
+    )+
     ggplot2::theme(
       plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
     )+
@@ -762,8 +841,8 @@ files.to.read<-list.files("data/YT Boreal Refugia Drive/bootstrapped rasters/Boo
   
   
   
-  ggplot2::ggsave(sample_boch_bcchREF, filename = paste0("sample_boch_bcchREF.png") ,
-                  path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
+  #ggplot2::ggsave(sample_boch_bcchREF, filename = paste0("sample_boch_bcchREFv2.png") ,
+   #               path = "plots/", units = "in", width = 10, height = 3.75, dpi = 300, bg = "white")
   
   
-  
+}
