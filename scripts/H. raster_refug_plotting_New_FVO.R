@@ -851,6 +851,8 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
   
   rr1 <- terra::classify(sumrast, m1, others=NA) 
  
+terra::writeRaster(rr1, paste0("data/",groupings_labs[m],".tiff"),  overwrite=TRUE )
+
   plot.one<-ggplot2::ggplot()+
     ggplot2::geom_sf(data = poly, fill = "grey") +
     ggplot2::geom_sf(data = usa_crop, fill = "white")+
@@ -967,6 +969,7 @@ print(paste("total duration of plotting", round(difftime(end.time,begin.time, un
   #m1
   
   rr1 <- terra::classify(sumrast, m1, others=NA) 
+  terra::writeRaster(rr1, paste0("data/",groupings_labs[m],".tiff"),  overwrite=TRUE )
   
   plot.one<-ggplot2::ggplot()+
     ggplot2::geom_sf(data = poly, fill = "grey") +
