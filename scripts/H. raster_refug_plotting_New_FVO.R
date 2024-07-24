@@ -1067,7 +1067,7 @@ share_ret_plot  <-
     plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm"),
     plot.title =  ggplot2::element_text(hjust = 0.5, face="bold")
   )+
-  ggplot2::ggtitle("All species")+
+  ggplot2::ggtitle("Combined groups")+
   ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
   ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0) +
   ggplot2::geom_sf(data = usa_crop, alpha = 0)+
