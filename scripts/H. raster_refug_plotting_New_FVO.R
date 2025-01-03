@@ -227,6 +227,8 @@ units(area.yukon_PAs_crs) <- units::as_units("km2")
 yukon <- canada_crop|>
    dplyr::filter(NAME_1 == "Yukon")|>
   sf::st_transform(rast.crs)
+
+watershed <- terra::vect("data/top watershed/TopWatersheds.shp")
 })
 
 ################################################################################################
@@ -1030,6 +1032,20 @@ for (m in 1:length(all.group.rasters)) { # for each migratory group
   
 } 
 
+
+#one.group.PAS <- cowplot::plot_grid(plotlist = three.cat.list, ncol = 3, nrow = 1)
+
+new_one_group_PAS<-three.cat.list |> 
+  # Remove the y axis title and the plot title except for the first plot
+  purrr::imap(\(x, y) if (!y == 1) x + ggplot2::labs(y = NULL) else x) |> 
+  patchwork::wrap_plots(guides = "collect", nrow = 1)  & ggplot2::theme(text= ggplot2::element_text(size=20), legend.position = 'bottom')
+
+ggplot2::ggsave(new_one_group_PAS, filename = "new_one_group_PAS_25quantCurFutv9.png", 
+                path = "plots", units = "in", width = 15, height = 7.25, dpi = 300, bg = "white")
+
+print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
+
+
 joint_gain_ret <- terra::rast("data/Shared_retain_gain.tif")
 
 joint_gain_ret <- terra::ifel(joint_gain_ret == 0, NA, joint_gain_ret)
@@ -1039,6 +1055,7 @@ share_ret_plot  <-
   ggplot2::geom_sf(data = poly, fill = "grey") +
   ggplot2::geom_sf(data = usa_crop, fill = "white")+
   ggplot2::geom_sf(data = canada_crop, fill = "white")+
+  tidyterra::geom_spatvector(data = watershed, alpha = 0, color = "#CC79A7")+
   tidyterra::geom_spatraster(data =terra::as.factor(joint_gain_ret)#, alpha = 0.75
   )+
   #attempt other colours of viridis
@@ -1049,7 +1066,7 @@ share_ret_plot  <-
   # values = c("#D55E00","#F0E442", "#0072B2"))+ 
   ggplot2::scale_fill_manual(na.translate = FALSE,
                              na.value="transparent", 
-                             values = c("#CC79A7"),
+                             values = c("navyblue"),
                              labels = c("Shared retained/gained")
   )+
   #ggnewscale::new_scale_fill()+
@@ -1078,19 +1095,10 @@ share_ret_plot  <-
                     expand = FALSE)+
   ggplot2::labs(fill="")  
 
-three.cat.list[[4]] <- share_ret_plot
+ggplot2::ggsave(share_ret_plot, filename = "new_one_group_PAS_25SHAREDv9.png", 
+                path = "plots", units = "in", width = 5, height = 7.25, dpi = 300, bg = "white")
 
-#one.group.PAS <- cowplot::plot_grid(plotlist = three.cat.list, ncol = 3, nrow = 1)
 
-new_one_group_PAS<-three.cat.list |> 
-  # Remove the y axis title and the plot title except for the first plot
-  purrr::imap(\(x, y) if (!y == 1) x + ggplot2::labs(y = NULL) else x) |> 
-  patchwork::wrap_plots(guides = "collect", nrow = 1)  & ggplot2::theme(text= ggplot2::element_text(size=20), legend.position = 'bottom')
-
-ggplot2::ggsave(new_one_group_PAS, filename = "new_one_group_PAS_25quantCurFutv8.png", 
-                path = "plots", units = "in", width = 20, height = 7.5, dpi = 300, bg = "white")
-
-print(paste("Grouping two sets plots", format(Sys.time(), "%X") ))
 
 #plot(one.group.PAS)
 
@@ -1215,6 +1223,10 @@ print(paste("total duration of plotting", round(difftime(end.time,begin.time, un
 # or over total birds (only for proportions to standardize and stack groups)
 
 #files.vect <-list.files("data/YT Boreal Refugia Drive/Files_1991_Present_Mean90CI_rds/",  full.names = TRUE)
+
+groupings_labs <- c("RES","SDM", "LDM") #be sure you have this labels for migratory stacks
+#need to re run after running plots!!!!! or switching from pop based 
+num.spp <- c(length(RES), length(SDM), length(LDM))
 
 {
   
@@ -1499,5 +1511,133 @@ pixel.vals.df<-pixel.vals.df|>
 #write.csv(pixel.vals.df, "data/pixel.vals.df.csv")
 
 
+
+
+#############
+############
+## 6) individual future suit refugia
+####
+####
+#  TRIALS Jan 02 2025
+
+
+{
+  
+  turbo_pal <- c(viridis::turbo(n = 1000, direction = -1))
+  
+  Mode <- function(x) {
+    x<-x[!is.na(x)]
+    ux <- unique(x)
+    ux[which.max(tabulate(match(x, ux)))]
+  }
+  
+  begin.time <- Sys.time()
+  
+  #check color palette to assign highest colour correctly
+  #vir_pal <- c(viridis::viridis(n = 1000, direction = -1))
+  #find a darker shade of the darkest color in the palette
+  #darker<-colorspace::darken("#440154FF", 0.2)
+  #darker
+  
+  startnum<-NULL
+  the.birds <- (c(RES,SDM, LDM))
+  the.birds <- sort(the.birds) # for 1 ordered full spp plot
+  
+  NA_rast1 <-terra::crop(NA_rast,bird_rast)
+  AKrast1 <-terra::crop(AKrast,bird_rast)
+  
+  pixel.vals<-NULL
+  
+  all.plots<-NULL
+  
+  #loop for to run all groups
+  for (k in groupings_labs) {
+    
+    #for one group
+    group_plots<- list()
+    
+    group_spp <- get(k)
+    
+    #for the all the species in the group 
+    for (i in c(group_spp)){
+      startnum[[i]]<-i
+      
+      rast1 <- terra::rast(x = files.to.read[grep(paste0(i,"_","FutureSuit_by_Ref.tif"), files.to.read)])
+      
+      terra::crs(rast1) <- rast.crs
+      names(rast1) <- i
+      
+      mean.val <- mean(terra::values(rast1), na.rm = TRUE)
+      median.val <- median(terra::values(rast1), na.rm = TRUE)
+      
+      mode.val <- Mode(terra::values(rast1))
+      
+      max.val<- max(terra::values(rast1), na.rm = TRUE)
+      zmin <- max(mean.val, 0.001, na.rm = TRUE)
+      
+      lowest <- min(terra::values(rast1), na.rm = TRUE)
+      
+      q99 <- quantile(terra::values(rast1), probs=c(0.999), na.rm=TRUE) #after capping
+      q90 <- quantile(terra::values(rast1), probs=c(0.9), na.rm=TRUE) #after capping
+      
+      pixel.vals <- rbind( pixel.vals, c(k, i, mean.val, median.val, mode.val, lowest, max.val, zmin, q90, q99))
+      
+      plot.onebird<-ggplot2::ggplot()+
+        ggplot2::geom_sf(data = poly, fill = "grey") +
+        ggplot2::geom_sf(data = usa_crop, fill = "white")+
+        ggplot2::geom_sf(data = canada_crop, fill = "white")+
+        tidyterra::geom_spatraster(data =rast1)+
+        ggplot2::geom_sf(data = usa_crop, alpha =0)+
+        ggplot2::geom_sf(data = canada_crop, alpha =0)+       
+        ggplot2::geom_sf(data = BCR4.1_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+        ggplot2::geom_sf(data = BCR4.0_USACAN, ggplot2::aes(), linewidth=0.5 ,color = "black", alpha = 0)+
+        ggplot2::coord_sf(xlim=c(terra::ext(can_us_crop)[1], terra::ext(can_us_crop)[2]),########## needs the cropped shape as the Current rasters are larger
+                          ylim = c(terra::ext(can_us_crop)[3], terra::ext(can_us_crop)[4]),
+                          expand = FALSE)+
+        ggplot2::theme_bw()+
+        #ggplot2:: scale_fill_viridis_c( direction = -1, na.value="transparent")+ ### IF NO SCALING for viz
+        ggplot2::scale_fill_gradientn(
+          colors = c(
+            turbo_pal
+          ),
+          values = scales::rescale(
+            sort(c(range(terra::values(rast1)), c(0, 1))),
+            to = c(0, 1)
+          ),
+          oob = scales::squish,
+          limits = c(0, 1) , na.value = "transparent"
+        ) +
+        ggplot2::theme(
+          plot.margin = ggplot2::margin(0.1,0.1,0.1,0.1, "cm")
+        )+
+        ggplot2::ggtitle(names(rast1))
+      
+      
+      #print(paste(grep(i, the.birds),"out of", length(the.birds),", Plotting species:",i))
+      print(paste("Working", k,grep(i,group_spp),"/", length(group_spp) , "Fut Ref suit plot", i,"at", format(Sys.time(), "%X"), length(startnum),"/",(length(c(LDM,SDM,RES)))   ))
+      
+      
+      group_plots[[i]] <- plot.onebird
+      all.plots[[i]]<-plot.onebird
+    }
+    
+    print(paste("Grouping plots", k,"in 1 frame", format(Sys.time(), "%X") ))
+    
+    one.group <-cowplot::plot_grid(plotlist = group_plots, ncol=4 )
+    
+    print(paste("Saving", k, "plots to disk", format(Sys.time(), "%X") ))
+    
+    ggplot2::ggsave(one.group, filename = (paste0(k,"_FutSuitRefv9.png")), path = "plots/", units = "in", width = 16, height=  3*ceiling(length(group_spp)/4), limitsize = FALSE, dpi = 300, bg = "white")
+
+    
+  }
+  all.bird.plots <-cowplot::plot_grid(plotlist = all.plots, ncol=4 )
+  
+  #ggplot2::ggsave(all.bird.plots, filename = (paste0("all_currSUITv8.png")), path = "plots/", units = "in", width = 16, height=  3*ceiling(length(the.birds)/4), limitsize = FALSE, dpi = 300, bg = "white")
+  
+  end.time <- Sys.time()
+  print(paste("total duration of run", round(difftime(end.time,begin.time, units = "mins"),2), "mins"))
+  
+}
 
 
